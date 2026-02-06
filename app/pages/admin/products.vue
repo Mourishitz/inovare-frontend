@@ -111,7 +111,7 @@
 import type { Product } from '~/types'
 
 definePageMeta({
-  middleware: ['auth', 'admin'],
+  middleware: ['admin'],
   layout: 'admin'
 })
 

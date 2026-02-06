@@ -1,19 +1,22 @@
-import { UserRole } from '~/types'
+import { UserRole } from "~/types";
 
 export default defineNuxtRouteMiddleware(async (to, from) => {
-  const { user, isAuthenticated, checkAuth } = useAuth()
+  const { user, isAuthenticated, checkAuth } = useAuth();
+  console.log("User middleware: Checking authentication and role...");
+  console.log("Current user:", user.value);
+  console.log("Is authenticated:", isAuthenticated.value);
 
   // Ensure user is authenticated first
   if (!isAuthenticated.value) {
-    await checkAuth()
+    await checkAuth();
   }
 
   if (!isAuthenticated.value) {
-    return navigateTo('/login')
+    return navigateTo("/login");
   }
 
   // Check if user has bride/user role (not admin)
   if (user.value?.role !== UserRole.BRIDE) {
-    return navigateTo('/admin')
+    return navigateTo("/admin");
   }
-})
+});

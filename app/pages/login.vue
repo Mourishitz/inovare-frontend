@@ -38,6 +38,7 @@
                 size="xl"
                 icon="i-heroicons-envelope"
                 autocomplete="email"
+                class="w-full"
               />
             </UFormField>
 
@@ -50,6 +51,7 @@
                 size="xl"
                 icon="i-heroicons-lock-closed"
                 autocomplete="password"
+                class="w-full"
                 :ui="{ icon: { trailing: { pointer: '' } } }"
               >
                 <template #trailing>
@@ -176,10 +178,10 @@ const handleLogin = async () => {
       const auth = useAuth();
       auth.user.value = data.user;
       auth.token.value = data.token;
+      auth.authInitialized.value = true;
 
-      // Store in localStorage for persistence
+      // Store user in localStorage for persistence
       if (import.meta.client) {
-        localStorage.setItem("auth-token", data.token);
         localStorage.setItem("auth-user", JSON.stringify(data.user));
       }
 
@@ -192,9 +194,9 @@ const handleLogin = async () => {
 
       // Navigate based on role
       if (data.user.role === UserRole.ADMIN) {
-        router.push("/admin");
+        await navigateTo("/admin", { replace: true });
       } else {
-        router.push("/");
+        await navigateTo("/", { replace: true });
       }
     } else {
       error.value = data?.message || "E-mail ou senha inválidos";

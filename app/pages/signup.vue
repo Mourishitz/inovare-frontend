@@ -33,7 +33,7 @@
               </div>
               <div class="flex gap-1">
                 <div
-                  v-for="step in 3"
+                  v-for="step in 4"
                   :key="step"
                   :class="[
                     'w-8 h-1.5 rounded-full transition-colors',
@@ -200,7 +200,7 @@
                   :disabled="loading"
                   size="xl"
                   icon="i-heroicons-user-group"
-                  min="0"
+                  :min="0"
                 />
               </UFormField>
 
@@ -249,15 +249,244 @@
               </div>
             </template>
 
-            <!-- Step 3: Additional Information (placeholder) -->
+            <!-- Step 3: Preferences -->
             <template v-if="currentStep === 3">
-              <div class="text-center py-8">
-                <UIcon
-                  name="i-heroicons-sparkles"
-                  class="w-16 h-16 text-primary mx-auto mb-4"
+              <UFormField
+                label="Estilo"
+                name="style"
+                :error="errors.style || undefined"
+              >
+                <URadioGroup
+                  v-model="step3Data.style"
+                  :items="[
+                    { value: 1, label: 'Romântico' },
+                    { value: 2, label: 'Sensual' },
+                    { value: 3, label: 'Elegante' },
+                    { value: 4, label: 'Divertido' },
+                    { value: 5, label: 'Clássico' },
+                    { value: 6, label: 'Moderno' }
+                  ]"
+                  :disabled="loading"
+                  :ui="{ fieldset: 'grid grid-cols-3 gap-2 p-4' }"
                 />
-                <p class="text-gray-600">Passo 3 será implementado em breve</p>
+              </UFormField>
+
+              <UFormField
+                label="Cores Favoritas"
+                name="favoriteColors"
+                :error="errors.favoriteColors || undefined"
+              >
+                <div class="grid grid-cols-3 gap-2 p-4">
+                  <UCheckbox
+                    v-for="color in [
+                      { value: 1, label: 'Branco' },
+                      { value: 2, label: 'Preto' },
+                      { value: 3, label: 'Vermelho' },
+                      { value: 4, label: 'Lilás' },
+                      { value: 5, label: 'Roxo' },
+                      { value: 6, label: 'Marsala' },
+                      { value: 7, label: 'Rosê (Rosa Claro)' },
+                      { value: 8, label: 'Azul' },
+                      { value: 9, label: 'Amarelo' },
+                      { value: 10, label: 'Verde' },
+                      { value: 11, label: 'Cinza' },
+                      { value: 12, label: 'Terracota' },
+                      { value: 13, label: 'Bege' },
+                      { value: 14, label: 'Rubi' }
+                    ]"
+                    :key="color.value"
+                    :model-value="step3Data.favoriteColors.includes(color.value)"
+                    @update:model-value="(checked) => {
+                      if (checked) {
+                        step3Data.favoriteColors.push(color.value)
+                      } else {
+                        const index = step3Data.favoriteColors.indexOf(color.value)
+                        if (index > -1) step3Data.favoriteColors.splice(index, 1)
+                      }
+                    }"
+                    :label="color.label"
+                    :disabled="loading"
+                  />
+                </div>
+              </UFormField>
+
+              <div class="grid grid-cols-3 gap-4">
+                <UFormField
+                  label="Sutiã Preferido"
+                  name="preferredBra"
+                  :error="errors.preferredBra || undefined"
+                >
+                  <URadioGroup
+                    v-model="step3Data.preferredBra"
+                    :items="[
+                      { value: 1, label: 'Com Bojo' },
+                      { value: 2, label: 'Sem Bojo' },
+                      { value: 3, label: 'Ambos' }
+                    ]"
+                    :disabled="loading"
+                    :ui="{ fieldset: 'gap-2 p-4' }"
+                  />
+                </UFormField>
+
+                <UFormField
+                  label="Modelo Preferido"
+                  name="preferredModel"
+                  :error="errors.preferredModel || undefined"
+                >
+                  <URadioGroup
+                    v-model="step3Data.preferredModel"
+                    :items="[
+                      { value: 1, label: 'Com renda' },
+                      { value: 2, label: 'Lisos' },
+                      { value: 3, label: 'Ambos' }
+                    ]"
+                    :disabled="loading"
+                    :ui="{ fieldset: 'gap-2 p-4' }"
+                  />
+                </UFormField>
+
+                <UFormField
+                  label="Calcinha Preferida"
+                  name="preferredPanties"
+                  :error="errors.preferredPanties || undefined"
+                >
+                  <URadioGroup
+                    v-model="step3Data.preferredPanties"
+                    :items="[
+                      { value: 1, label: 'Fio Dental' },
+                      { value: 2, label: 'Médias' },
+                      { value: 3, label: 'Caleçon' }
+                    ]"
+                    :disabled="loading"
+                    :ui="{ fieldset: 'gap-2 p-4' }"
+                  />
+                </UFormField>
               </div>
+
+              <UFormField
+                label="Tamanho"
+                name="size"
+                :error="errors.size || undefined"
+              >
+                <URadioGroup
+                  v-model="step3Data.size"
+                  :items="[
+                    { value: 1, label: 'PP' },
+                    { value: 2, label: 'P' },
+                    { value: 3, label: 'M' },
+                    { value: 4, label: 'G' },
+                    { value: 5, label: 'GG' },
+                    { value: 6, label: 'XG' }
+                  ]"
+                  :disabled="loading"
+                  :ui="{ fieldset: 'grid grid-cols-6 gap-2 p-4' }"
+                />
+              </UFormField>
+
+              <UFormField
+                label="Modelos Permitidos"
+                name="allowedModels"
+                :error="errors.allowedModels || undefined"
+              >
+                <div class="grid grid-cols-3 gap-2 p-4">
+                  <UCheckbox
+                    v-for="model in [
+                      { value: 1, label: 'Conjuntos' },
+                      { value: 2, label: 'Camisola' },
+                      { value: 3, label: 'Pijama Longo' },
+                      { value: 4, label: 'Bodys' },
+                      { value: 5, label: 'Baby Doll' },
+                      { value: 6, label: 'Biquini' }
+                    ]"
+                    :key="model.value"
+                    :model-value="step3Data.allowedModels.includes(model.value)"
+                    @update:model-value="(checked) => {
+                      if (checked) {
+                        step3Data.allowedModels.push(model.value)
+                      } else {
+                        const index = step3Data.allowedModels.indexOf(model.value)
+                        if (index > -1) step3Data.allowedModels.splice(index, 1)
+                      }
+                    }"
+                    :label="model.label"
+                    :disabled="loading"
+                  />
+                </div>
+              </UFormField>
+
+              <UFormField
+                label="Modelos Não Permitidos"
+                name="notAllowedModels"
+                :error="errors.notAllowedModels || undefined"
+              >
+                <UInput
+                  v-model="step3Data.notAllowedModels"
+                  type="text"
+                  placeholder="Ex: Model C"
+                  :disabled="loading"
+                  size="xl"
+                />
+              </UFormField>
+
+              <UFormField
+                label="Observações"
+                name="notes"
+                :error="errors.notes || undefined"
+              >
+                <UTextarea
+                  v-model="step3Data.notes"
+                  placeholder="Observações adicionais..."
+                  :disabled="loading"
+                  :rows="4"
+                  size="xl"
+                />
+              </UFormField>
+            </template>
+
+            <!-- Step 4: Choose Format -->
+            <template v-if="currentStep === 4">
+              <UFormField
+                label="Escolha a Embalagem"
+                name="packaging"
+                :error="errors.packaging || undefined"
+              >
+                <div class="grid grid-cols-1 gap-6">
+                  <div
+                    v-for="option in [
+                      { value: 1, label: 'Bag', description: 'Embalagem em sacola', image: '/images/bag.png' },
+                      { value: 2, label: 'Box', description: 'Embalagem em caixa', image: '/images/box.png' }
+                    ]"
+                    :key="option.value"
+                    @click="step4Data.packaging = option.value"
+                    :class="[
+                      'relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:border-primary',
+                      step4Data.packaging === option.value ? 'border-primary bg-primary/5' : 'border-gray-200'
+                    ]"
+                  >
+                    <div class="flex items-center gap-4">
+                      <img 
+                        :src="option.image" 
+                        :alt="option.label"
+                        class="w-24 h-24 object-cover rounded-lg flex-shrink-0"
+                      />
+                      <div class="flex items-center gap-3 flex-1">
+                        <div class="flex-shrink-0">
+                          <div :class="[
+                            'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
+                            step4Data.packaging === option.value ? 'border-primary bg-primary' : 'border-gray-300'
+                          ]">
+                            <div v-if="step4Data.packaging === option.value" class="w-2 h-2 rounded-full bg-white"></div>
+                          </div>
+                        </div>
+                        <div>
+                          <p class="font-semibold text-lg">{{ option.label }}</p>
+                          <p class="text-sm text-gray-500">{{ option.description }}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </UFormField>
             </template>
 
             <UAlert
@@ -301,7 +530,7 @@
                 class="shadow-lg hover:shadow-xl transition-shadow"
               >
                 <span class="font-semibold">{{
-                  currentStep === 3 ? "Finalizar" : "Próximo"
+                  currentStep === 4 ? "Finalizar" : "Próximo"
                 }}</span>
                 <UIcon name="i-heroicons-arrow-right" class="w-5 h-5 ml-2" />
               </UButton>
@@ -361,8 +590,23 @@ const step2Data = reactive({
   weddingDate: "",
 });
 
-// Step 3 data (placeholder)
-const step3Data = reactive({});
+// Step 3 data
+const step3Data = reactive({
+  style: null as number | null,
+  favoriteColors: [] as number[],
+  preferredBra: null as number | null,
+  preferredModel: null as number | null,
+  preferredPanties: null as number | null,
+  size: null as number | null,
+  allowedModels: [] as number[],
+  notAllowedModels: "",
+  notes: ""
+});
+
+// Step 4 data
+const step4Data = reactive({
+  packaging: null as number | null
+});
 
 // Dynamic form data based on current step
 const currentFormData = computed(() => {
@@ -373,6 +617,8 @@ const currentFormData = computed(() => {
       return step2Data;
     case 3:
       return step3Data;
+    case 4:
+      return step4Data;
     default:
       return step1Data;
   }
@@ -383,15 +629,19 @@ const stepConfig = computed(() => {
   const configs = {
     1: {
       title: "Cadastro",
-      subtitle: "Passo 1 de 3 - Informações Básicas",
+      subtitle: "Passo 1 de 4 - Informações Básicas",
     },
     2: {
       title: "Informações do Chá",
-      subtitle: "Passo 2 de 3 - Detalhes do Evento",
+      subtitle: "Passo 2 de 4 - Detalhes do Evento",
     },
     3: {
-      title: "Finalizar",
-      subtitle: "Passo 3 de 3 - Últimos Detalhes",
+      title: "Preferências",
+      subtitle: "Passo 3 de 4 - Suas Preferências",
+    },
+    4: {
+      title: "Escolha seu Formato",
+      subtitle: "Passo 4 de 4 - Formato do Catálogo",
     },
   };
   return configs[currentStep.value as keyof typeof configs];
@@ -408,6 +658,16 @@ const errors = reactive({
   location: "",
   showerDate: "",
   weddingDate: "",
+  style: "",
+  favoriteColors: "",
+  preferredBra: "",
+  preferredModel: "",
+  preferredPanties: "",
+  size: "",
+  allowedModels: "",
+  notAllowedModels: "",
+  notes: "",
+  packaging: ""
 });
 
 const loading = ref(false);
@@ -429,10 +689,11 @@ onMounted(() => {
       Object.assign(step1Data, JSON.parse(savedStep1));
     }
 
-    const savedStep2 = sessionStorage.getItem("signup-step2");
-    if (savedStep2) {
-      Object.assign(step2Data, JSON.parse(savedStep2));
-    }
+    // Don't load step2Data from sessionStorage to avoid date format issues
+    // const savedStep2 = sessionStorage.getItem("signup-step2");
+    // if (savedStep2) {
+    //   Object.assign(step2Data, JSON.parse(savedStep2));
+    // }
   }
 });
 
@@ -576,14 +837,70 @@ const validateStep2 = (): boolean => {
 };
 
 const validateStep3 = (): boolean => {
-  // Placeholder for step 3 validation
-  return true;
+  let isValid = true;
+
+  // Reset step 3 errors
+  errors.style = "";
+  errors.favoriteColors = "";
+  errors.preferredBra = "";
+  errors.preferredModel = "";
+  errors.preferredPanties = "";
+  errors.size = "";
+  errors.allowedModels = "";
+  errors.notAllowedModels = "";
+  errors.notes = "";
+  generalError.value = "";
+
+  // Validate required fields
+  if (!step3Data.style) {
+    errors.style = "Estilo é obrigatório";
+    isValid = false;
+  }
+
+  if (step3Data.favoriteColors.length === 0) {
+    errors.favoriteColors = "Selecione pelo menos uma cor";
+    isValid = false;
+  }
+
+  if (!step3Data.preferredBra) {
+    errors.preferredBra = "Sutiã preferido é obrigatório";
+    isValid = false;
+  }
+
+  if (!step3Data.preferredModel) {
+    errors.preferredModel = "Modelo preferido é obrigatório";
+    isValid = false;
+  }
+
+  if (!step3Data.preferredPanties) {
+    errors.preferredPanties = "Calcinha preferida é obrigatória";
+    isValid = false;
+  }
+
+  if (!step3Data.size) {
+    errors.size = "Tamanho é obrigatório";
+    isValid = false;
+  }
+
+  return isValid;
 };
 
-const formatDateToISO = (dateString: string): string => {
+const formatDateToISO = (dateString: string | object): string => {
   if (!dateString) return "";
-  const date = new Date(dateString);
-  return date.toISOString();
+  
+  // If it's already a string, create a Date from it
+  if (typeof dateString === 'string') {
+    const date = new Date(dateString);
+    return date.toISOString();
+  }
+  
+  // If it's an object from the date picker (with year, month, day properties)
+  if (typeof dateString === 'object' && 'year' in dateString && 'month' in dateString && 'day' in dateString) {
+    const date = new Date(dateString.year, dateString.month - 1, dateString.day);
+    return date.toISOString();
+  }
+  
+  return "";
 };
 
 const handleStep1 = async () => {
@@ -661,32 +978,58 @@ const handleStep2 = async () => {
     return;
   }
 
+  console.log(step2Data)
+
   loading.value = true;
 
   try {
-    // Prepare data for backend
-    const teaData = {
+    // Prepare data for backend API
+    const showerData = {
       guests: step2Data.guests,
       location: step2Data.location.trim(),
       shower_date: formatDateToISO(step2Data.showerDate),
-      wedding_date: formatDateToISO(step2Data.weddingDate),
+      wedding_date: formatDateToISO(step2Data.weddingDate)
     };
 
-    // Store step 2 data in session storage
-    if (import.meta.client) {
-      sessionStorage.setItem("signup-step2", JSON.stringify(teaData));
-      sessionStorage.setItem("signup-current-step", "3");
-    }
+    const config = useRuntimeConfig();
+    const auth = useAuth();
+    const url = `${config.public.apiBase}/api/showers`;
 
-    useToast().add({
-      title: "Informações salvas!",
-      description: "Continue para o próximo passo",
-      color: "green",
-      icon: "i-heroicons-check-circle",
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${auth.token.value}`
+      },
+      body: JSON.stringify(showerData),
     });
 
-    // Move to step 3
-    currentStep.value = 3;
+    const data = await response.json();
+
+    if (response.ok) {
+      // Store the shower ID for later use
+      if (import.meta.client && data.ID) {
+        sessionStorage.setItem("shower_id", data.ID.toString());
+      }
+
+      // Store step 2 data in session storage
+      if (import.meta.client) {
+        sessionStorage.setItem("signup-step2", JSON.stringify(showerData));
+        sessionStorage.setItem("signup-current-step", "3");
+      }
+
+      useToast().add({
+        title: "Informações salvas!",
+        description: "Continue para o próximo passo",
+        color: "green",
+        icon: "i-heroicons-check-circle",
+      });
+
+      // Move to step 3
+      currentStep.value = 3;
+    } else {
+      generalError.value = data?.error || "Erro ao salvar as informações. Tente novamente.";
+    }
   } catch (err: any) {
     generalError.value = "Erro ao processar os dados. Tente novamente.";
   } finally {
@@ -702,18 +1045,141 @@ const handleStep3 = async () => {
   loading.value = true;
 
   try {
-    useToast().add({
-      title: "Em desenvolvimento",
-      description: "Passo 3 será implementado em breve",
-      color: "blue",
-      icon: "i-heroicons-information-circle",
+    // Get shower_id from sessionStorage
+    const showerId = import.meta.client ? sessionStorage.getItem("shower_id") : null;
+    
+    if (!showerId) {
+      generalError.value = "ID do chá não encontrado. Por favor, volte e complete o passo 2 novamente.";
+      loading.value = false;
+      return;
+    }
+
+    // Prepare preferences data for backend
+    const preferencesData = {
+      style: step3Data.style,
+      favoriteColors: step3Data.favoriteColors,
+      preferredBra: step3Data.preferredBra,
+      preferredModel: step3Data.preferredModel,
+      preferredPanties: step3Data.preferredPanties,
+      size: step3Data.size,
+      allowedModels: step3Data.allowedModels,
+      notAllowedModels: step3Data.notAllowedModels.trim(),
+      notes: step3Data.notes.trim()
+    };
+
+    console.log(preferencesData);
+
+    const config = useRuntimeConfig();
+    const auth = useAuth();
+    const url = `${config.public.apiBase}/api/showers/${showerId}/preferences`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${auth.token.value}`
+      },
+      body: JSON.stringify(preferencesData),
     });
 
-    // Clear session data
-    if (import.meta.client) {
-      sessionStorage.removeItem("signup-step1");
-      sessionStorage.removeItem("signup-step2");
-      sessionStorage.removeItem("signup-current-step");
+    const data = await response.json();
+
+    if (response.ok) {
+      useToast().add({
+        title: "Preferências salvas!",
+        description: "Continue para o último passo",
+        color: "green",
+        icon: "i-heroicons-check-circle",
+      });
+
+      // Move to step 4
+      if (import.meta.client) {
+        sessionStorage.setItem("signup-current-step", "4");
+      }
+      currentStep.value = 4;
+    } else {
+      generalError.value = data?.error || "Erro ao salvar as preferências. Tente novamente.";
+    }
+  } catch (err: any) {
+    generalError.value = "Erro ao finalizar o cadastro. Tente novamente.";
+  } finally {
+    loading.value = false;
+  }
+};
+
+const validateStep4 = (): boolean => {
+  let isValid = true;
+
+  errors.packaging = "";
+  generalError.value = "";
+
+  if (!step4Data.packaging) {
+    errors.packaging = "Escolha uma opção de embalagem";
+    isValid = false;
+  }
+
+  return isValid;
+};
+
+const handleStep4 = async () => {
+  if (!validateStep4()) {
+    return;
+  }
+
+  loading.value = true;
+
+  try {
+    // Get shower_id from sessionStorage
+    const showerId = import.meta.client ? sessionStorage.getItem("shower_id") : null;
+    
+    if (!showerId) {
+      generalError.value = "ID do chá não encontrado. Por favor, volte e complete o passo 2 novamente.";
+      loading.value = false;
+      return;
+    }
+
+    // Prepare catalog data for backend
+    const catalogData = {
+      Package: step4Data.packaging
+    };
+
+    console.log("Packaging selected:", catalogData);
+
+    const config = useRuntimeConfig();
+    const auth = useAuth();
+    const url = `${config.public.apiBase}/api/showers/${showerId}/catalog`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${auth.token.value}`
+      },
+      body: JSON.stringify(catalogData),
+    });
+
+    const data = await response.json();
+
+    if (response.ok && response.status === 201) {
+      useToast().add({
+        title: "Cadastro finalizado!",
+        description: "Seu catálogo está sendo preparado",
+        color: "green",
+        icon: "i-heroicons-check-circle",
+      });
+
+      // Clear session data
+      if (import.meta.client) {
+        sessionStorage.removeItem("signup-step1");
+        sessionStorage.removeItem("signup-step2");
+        sessionStorage.removeItem("signup-current-step");
+        sessionStorage.removeItem("shower_id");
+      }
+
+      // Redirect to home page
+      router.push('/');
+    } else {
+      generalError.value = data?.error || "Erro ao salvar o formato. Tente novamente.";
     }
   } catch (err: any) {
     generalError.value = "Erro ao finalizar o cadastro. Tente novamente.";
@@ -732,6 +1198,9 @@ const handleNext = async () => {
       break;
     case 3:
       await handleStep3();
+      break;
+    case 4:
+      await handleStep4();
       break;
   }
 };

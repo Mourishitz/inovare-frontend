@@ -98,7 +98,7 @@
 import type { Catalog, CatalogStatus } from '~/types'
 
 definePageMeta({
-  middleware: ['auth', 'user'],
+  middleware: ['user'],
   layout: 'authenticated'
 })
 

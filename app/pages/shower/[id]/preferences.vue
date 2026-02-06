@@ -70,7 +70,7 @@
 import type { ShowerPreferences } from '~/types'
 
 definePageMeta({
-  middleware: ['auth', 'user'],
+  middleware: ['user'],
   layout: 'authenticated'
 })
 
