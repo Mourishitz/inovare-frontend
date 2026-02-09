@@ -220,7 +220,7 @@
                 />
               </UFormField>
 
-              <div class="flex justify-between">
+              <div class="flex justify-between gap-2">
                 <UFormField
                   label="Data do Chá de Lingerie"
                   name="showerDate"
@@ -264,7 +264,7 @@
                     { value: 3, label: 'Elegante' },
                     { value: 4, label: 'Divertido' },
                     { value: 5, label: 'Clássico' },
-                    { value: 6, label: 'Moderno' }
+                    { value: 6, label: 'Moderno' },
                   ]"
                   :disabled="loading"
                   :ui="{ fieldset: 'grid grid-cols-3 gap-2 p-4' }"
@@ -292,18 +292,25 @@
                       { value: 11, label: 'Cinza' },
                       { value: 12, label: 'Terracota' },
                       { value: 13, label: 'Bege' },
-                      { value: 14, label: 'Rubi' }
+                      { value: 14, label: 'Rubi' },
                     ]"
                     :key="color.value"
-                    :model-value="step3Data.favoriteColors.includes(color.value)"
-                    @update:model-value="(checked) => {
-                      if (checked) {
-                        step3Data.favoriteColors.push(color.value)
-                      } else {
-                        const index = step3Data.favoriteColors.indexOf(color.value)
-                        if (index > -1) step3Data.favoriteColors.splice(index, 1)
+                    :model-value="
+                      step3Data.favoriteColors.includes(color.value)
+                    "
+                    @update:model-value="
+                      (checked) => {
+                        if (checked) {
+                          step3Data.favoriteColors.push(color.value);
+                        } else {
+                          const index = step3Data.favoriteColors.indexOf(
+                            color.value,
+                          );
+                          if (index > -1)
+                            step3Data.favoriteColors.splice(index, 1);
+                        }
                       }
-                    }"
+                    "
                     :label="color.label"
                     :disabled="loading"
                   />
@@ -321,7 +328,7 @@
                     :items="[
                       { value: 1, label: 'Com Bojo' },
                       { value: 2, label: 'Sem Bojo' },
-                      { value: 3, label: 'Ambos' }
+                      { value: 3, label: 'Ambos' },
                     ]"
                     :disabled="loading"
                     :ui="{ fieldset: 'gap-2 p-4' }"
@@ -338,7 +345,7 @@
                     :items="[
                       { value: 1, label: 'Com renda' },
                       { value: 2, label: 'Lisos' },
-                      { value: 3, label: 'Ambos' }
+                      { value: 3, label: 'Ambos' },
                     ]"
                     :disabled="loading"
                     :ui="{ fieldset: 'gap-2 p-4' }"
@@ -355,7 +362,7 @@
                     :items="[
                       { value: 1, label: 'Fio Dental' },
                       { value: 2, label: 'Médias' },
-                      { value: 3, label: 'Caleçon' }
+                      { value: 3, label: 'Caleçon' },
                     ]"
                     :disabled="loading"
                     :ui="{ fieldset: 'gap-2 p-4' }"
@@ -376,7 +383,7 @@
                     { value: 3, label: 'M' },
                     { value: 4, label: 'G' },
                     { value: 5, label: 'GG' },
-                    { value: 6, label: 'XG' }
+                    { value: 6, label: 'XG' },
                   ]"
                   :disabled="loading"
                   :ui="{ fieldset: 'grid grid-cols-6 gap-2 p-4' }"
@@ -396,18 +403,23 @@
                       { value: 3, label: 'Pijama Longo' },
                       { value: 4, label: 'Bodys' },
                       { value: 5, label: 'Baby Doll' },
-                      { value: 6, label: 'Biquini' }
+                      { value: 6, label: 'Biquini' },
                     ]"
                     :key="model.value"
                     :model-value="step3Data.allowedModels.includes(model.value)"
-                    @update:model-value="(checked) => {
-                      if (checked) {
-                        step3Data.allowedModels.push(model.value)
-                      } else {
-                        const index = step3Data.allowedModels.indexOf(model.value)
-                        if (index > -1) step3Data.allowedModels.splice(index, 1)
+                    @update:model-value="
+                      (checked) => {
+                        if (checked) {
+                          step3Data.allowedModels.push(model.value);
+                        } else {
+                          const index = step3Data.allowedModels.indexOf(
+                            model.value,
+                          );
+                          if (index > -1)
+                            step3Data.allowedModels.splice(index, 1);
+                        }
                       }
-                    }"
+                    "
                     :label="model.label"
                     :disabled="loading"
                   />
@@ -453,34 +465,57 @@
                 <div class="grid grid-cols-1 gap-6">
                   <div
                     v-for="option in [
-                      { value: 1, label: 'Bag', description: 'Embalagem em sacola', image: '/images/bag.png' },
-                      { value: 2, label: 'Box', description: 'Embalagem em caixa', image: '/images/box.png' }
+                      {
+                        value: 1,
+                        label: 'Bag',
+                        description: 'Embalagem em sacola',
+                        image: '/images/bag.png',
+                      },
+                      {
+                        value: 2,
+                        label: 'Box',
+                        description: 'Embalagem em caixa',
+                        image: '/images/box.png',
+                      },
                     ]"
                     :key="option.value"
                     @click="step4Data.packaging = option.value"
                     :class="[
                       'relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:border-primary',
-                      step4Data.packaging === option.value ? 'border-primary bg-primary/5' : 'border-gray-200'
+                      step4Data.packaging === option.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-gray-200',
                     ]"
                   >
                     <div class="flex items-center gap-4">
-                      <img 
-                        :src="option.image" 
+                      <img
+                        :src="option.image"
                         :alt="option.label"
                         class="w-24 h-24 object-cover rounded-lg flex-shrink-0"
                       />
                       <div class="flex items-center gap-3 flex-1">
                         <div class="flex-shrink-0">
-                          <div :class="[
-                            'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
-                            step4Data.packaging === option.value ? 'border-primary bg-primary' : 'border-gray-300'
-                          ]">
-                            <div v-if="step4Data.packaging === option.value" class="w-2 h-2 rounded-full bg-white"></div>
+                          <div
+                            :class="[
+                              'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
+                              step4Data.packaging === option.value
+                                ? 'border-primary bg-primary'
+                                : 'border-gray-300',
+                            ]"
+                          >
+                            <div
+                              v-if="step4Data.packaging === option.value"
+                              class="w-2 h-2 rounded-full bg-white"
+                            ></div>
                           </div>
                         </div>
                         <div>
-                          <p class="font-semibold text-lg">{{ option.label }}</p>
-                          <p class="text-sm text-gray-500">{{ option.description }}</p>
+                          <p class="font-semibold text-lg">
+                            {{ option.label }}
+                          </p>
+                          <p class="text-sm text-gray-500">
+                            {{ option.description }}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -600,12 +635,12 @@ const step3Data = reactive({
   size: null as number | null,
   allowedModels: [] as number[],
   notAllowedModels: "",
-  notes: ""
+  notes: "",
 });
 
 // Step 4 data
 const step4Data = reactive({
-  packaging: null as number | null
+  packaging: null as number | null,
 });
 
 // Dynamic form data based on current step
@@ -667,7 +702,7 @@ const errors = reactive({
   allowedModels: "",
   notAllowedModels: "",
   notes: "",
-  packaging: ""
+  packaging: "",
 });
 
 const loading = ref(false);
@@ -887,19 +922,28 @@ const validateStep3 = (): boolean => {
 
 const formatDateToISO = (dateString: string | object): string => {
   if (!dateString) return "";
-  
+
   // If it's already a string, create a Date from it
-  if (typeof dateString === 'string') {
+  if (typeof dateString === "string") {
     const date = new Date(dateString);
     return date.toISOString();
   }
-  
+
   // If it's an object from the date picker (with year, month, day properties)
-  if (typeof dateString === 'object' && 'year' in dateString && 'month' in dateString && 'day' in dateString) {
-    const date = new Date(dateString.year, dateString.month - 1, dateString.day);
+  if (
+    typeof dateString === "object" &&
+    "year" in dateString &&
+    "month" in dateString &&
+    "day" in dateString
+  ) {
+    const date = new Date(
+      dateString.year,
+      dateString.month - 1,
+      dateString.day,
+    );
     return date.toISOString();
   }
-  
+
   return "";
 };
 
@@ -978,7 +1022,7 @@ const handleStep2 = async () => {
     return;
   }
 
-  console.log(step2Data)
+  console.log(step2Data);
 
   loading.value = true;
 
@@ -988,7 +1032,7 @@ const handleStep2 = async () => {
       guests: step2Data.guests,
       location: step2Data.location.trim(),
       shower_date: formatDateToISO(step2Data.showerDate),
-      wedding_date: formatDateToISO(step2Data.weddingDate)
+      wedding_date: formatDateToISO(step2Data.weddingDate),
     };
 
     const config = useRuntimeConfig();
@@ -999,7 +1043,7 @@ const handleStep2 = async () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${auth.token.value}`
+        Authorization: `Bearer ${auth.token.value}`,
       },
       body: JSON.stringify(showerData),
     });
@@ -1028,7 +1072,8 @@ const handleStep2 = async () => {
       // Move to step 3
       currentStep.value = 3;
     } else {
-      generalError.value = data?.error || "Erro ao salvar as informações. Tente novamente.";
+      generalError.value =
+        data?.error || "Erro ao salvar as informações. Tente novamente.";
     }
   } catch (err: any) {
     generalError.value = "Erro ao processar os dados. Tente novamente.";
@@ -1046,10 +1091,13 @@ const handleStep3 = async () => {
 
   try {
     // Get shower_id from sessionStorage
-    const showerId = import.meta.client ? sessionStorage.getItem("shower_id") : null;
-    
+    const showerId = import.meta.client
+      ? sessionStorage.getItem("shower_id")
+      : null;
+
     if (!showerId) {
-      generalError.value = "ID do chá não encontrado. Por favor, volte e complete o passo 2 novamente.";
+      generalError.value =
+        "ID do chá não encontrado. Por favor, volte e complete o passo 2 novamente.";
       loading.value = false;
       return;
     }
@@ -1064,7 +1112,7 @@ const handleStep3 = async () => {
       size: step3Data.size,
       allowedModels: step3Data.allowedModels,
       notAllowedModels: step3Data.notAllowedModels.trim(),
-      notes: step3Data.notes.trim()
+      notes: step3Data.notes.trim(),
     };
 
     console.log(preferencesData);
@@ -1077,7 +1125,7 @@ const handleStep3 = async () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${auth.token.value}`
+        Authorization: `Bearer ${auth.token.value}`,
       },
       body: JSON.stringify(preferencesData),
     });
@@ -1098,7 +1146,8 @@ const handleStep3 = async () => {
       }
       currentStep.value = 4;
     } else {
-      generalError.value = data?.error || "Erro ao salvar as preferências. Tente novamente.";
+      generalError.value =
+        data?.error || "Erro ao salvar as preferências. Tente novamente.";
     }
   } catch (err: any) {
     generalError.value = "Erro ao finalizar o cadastro. Tente novamente.";
@@ -1130,17 +1179,20 @@ const handleStep4 = async () => {
 
   try {
     // Get shower_id from sessionStorage
-    const showerId = import.meta.client ? sessionStorage.getItem("shower_id") : null;
-    
+    const showerId = import.meta.client
+      ? sessionStorage.getItem("shower_id")
+      : null;
+
     if (!showerId) {
-      generalError.value = "ID do chá não encontrado. Por favor, volte e complete o passo 2 novamente.";
+      generalError.value =
+        "ID do chá não encontrado. Por favor, volte e complete o passo 2 novamente.";
       loading.value = false;
       return;
     }
 
     // Prepare catalog data for backend
     const catalogData = {
-      Package: step4Data.packaging
+      Package: step4Data.packaging,
     };
 
     console.log("Packaging selected:", catalogData);
@@ -1153,7 +1205,7 @@ const handleStep4 = async () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${auth.token.value}`
+        Authorization: `Bearer ${auth.token.value}`,
       },
       body: JSON.stringify(catalogData),
     });
@@ -1177,9 +1229,10 @@ const handleStep4 = async () => {
       }
 
       // Redirect to home page
-      router.push('/');
+      router.push("/");
     } else {
-      generalError.value = data?.error || "Erro ao salvar o formato. Tente novamente.";
+      generalError.value =
+        data?.error || "Erro ao salvar o formato. Tente novamente.";
     }
   } catch (err: any) {
     generalError.value = "Erro ao finalizar o cadastro. Tente novamente.";
