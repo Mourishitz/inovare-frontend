@@ -126,7 +126,11 @@
                         class: 'rounded-full',
                       }"
                     >
-                      <UButton label="Open" color="neutral" variant="subtle" />
+                      <UButton
+                        label="Visualizar Imagem"
+                        color="neutral"
+                        variant="subtle"
+                      />
 
                       <template #body>
                         <img
