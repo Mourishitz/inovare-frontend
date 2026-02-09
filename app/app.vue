@@ -1,13 +1,13 @@
-<template>
+<template class="w-full">
   <UApp>
     <NuxtRouteAnnouncer />
-    <div v-if="authInitialized">
-      <NuxtLayout>
+    <div v-if="authInitialized" class="w-full">
+      <NuxtLayout class="w-full">
         <NuxtPage />
       </NuxtLayout>
     </div>
     <div v-else class="min-h-screen w-full flex items-center justify-center">
-      <div class="text-center">
+      <div class="w-full text-center">
         <UIcon
           name="i-heroicons-arrow-path"
           class="w-8 h-8 text-primary animate-spin"

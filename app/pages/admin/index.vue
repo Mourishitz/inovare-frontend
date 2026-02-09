@@ -8,18 +8,22 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       <UCard>
         <div class="text-center">
-          <p class="text-3xl font-bold text-primary-600">{{ stats.totalShowers }}</p>
+          <p class="text-3xl font-bold text-primary-600">
+            {{ stats.totalShowers }}
+          </p>
           <p class="text-sm text-gray-600 mt-1">Total de Chás</p>
         </div>
       </UCard>
-      
+
       <UCard>
         <div class="text-center">
-          <p class="text-3xl font-bold text-yellow-600">{{ stats.pendingReview }}</p>
+          <p class="text-3xl font-bold text-yellow-600">
+            {{ stats.pendingReview }}
+          </p>
           <p class="text-sm text-gray-600 mt-1">Aguardando Revisão</p>
         </div>
       </UCard>
-      
+
       <UCard>
         <div class="text-center">
           <p class="text-3xl font-bold text-green-600">{{ stats.completed }}</p>
@@ -44,20 +48,15 @@
       <UCard>
         <h2 class="text-xl font-semibold mb-4">Chás Recentes</h2>
         <div class="space-y-2">
-          <div
+          <RecentShowerCard
             v-for="shower in recentShowers"
             :key="shower.id"
-            class="flex justify-between items-center py-2 border-b last:border-0"
+            :shower="shower"
+          />
+          <p
+            v-if="recentShowers.length === 0"
+            class="text-gray-500 text-sm text-center py-4"
           >
-            <div>
-              <p class="font-medium">{{ shower.title }}</p>
-              <p class="text-sm text-gray-600">{{ shower.date }}</p>
-            </div>
-            <UButton :to="`/admin/showers/${shower.id}`" size="xs" variant="soft">
-              Ver
-            </UButton>
-          </div>
-          <p v-if="recentShowers.length === 0" class="text-gray-500 text-sm text-center py-4">
             Nenhum chá cadastrado
           </p>
         </div>
@@ -67,19 +66,41 @@
 </template>
 
 <script setup lang="ts">
-import type { Shower } from '~/types'
+import type { Shower } from "~/types";
 
 definePageMeta({
-  middleware: ['admin'],
-  layout: 'admin'
-})
+  middleware: ["admin"],
+  layout: "admin",
+});
 
-// TODO: Load stats and recent showers from API
+const { apiCall } = useApi();
+
 const stats = ref({
   totalShowers: 0,
   pendingReview: 0,
-  completed: 0
-})
+  completed: 0,
+});
 
-const recentShowers = ref<Shower[]>([])
+const recentShowers = ref<Shower[]>([]);
+
+interface DashboardData {
+  approved_catalogs: number;
+  not_approved_catalogs: number;
+  recent_showers: Shower[];
+  total_showers: number;
+}
+
+onMounted(async () => {
+  try {
+    const data = await apiCall<DashboardData>("/api/admin/dashboard");
+    stats.value = {
+      totalShowers: data.total_showers,
+      pendingReview: data.not_approved_catalogs,
+      completed: data.approved_catalogs,
+    };
+    recentShowers.value = data.recent_showers;
+  } catch (error) {
+    console.error("Failed to load dashboard data:", error);
+  }
+});
 </script>

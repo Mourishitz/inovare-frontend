@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gradient-to-b from-pink-50 to-white">
     <!-- Header Section -->
     <div class="bg-white border-b border-gray-200 mb-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-4xl font-bold text-gray-900 mb-2">
@@ -33,7 +33,7 @@
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error && !catalog" class="max-w-2xl mx-auto px-4 py-24">
+    <div v-else-if="error && !catalog" class="w-full px-4 py-24">
       <UCard>
         <div class="text-center py-8">
           <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
@@ -50,7 +50,7 @@
 
     <!-- Catalog Content -->
     <template v-else-if="catalog">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      <div class="w-full px-4 sm:px-6 lg:px-8 pb-12">
         
         <!-- Catalog Stats -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
