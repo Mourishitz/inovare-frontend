@@ -30,24 +30,40 @@ export interface LoginResponse {
 }
 
 export interface Shower {
-  id: string
-  brideId: string  // ID of the bride hosting the shower
-  title: string
-  date: string
+  ID: string
+  brideId?: string
+  title?: string
+  date?: string
   location: string
-  description: string
-  preferences: ShowerPreferences | null
-  catalogId: string | null
-  status: ShowerStatus
+  description?: string
+  guests: number
+  shower_date: string
+  wedding_date: string
+  host_id: number
+  host?: User
+  catalog_id?: number | null
+  catalog?: Catalog | null
+  preferences_id?: number | null
+  preferences?: ShowerPreferences | null
+  status?: ShowerStatus
   createdAt: string
   updatedAt: string
 }
 
 export interface ShowerPreferences {
-  theme: string  // e.g., "Romântico", "Sensual", "Clássico"
-  budget: number
-  guestCount: number
-  specialRequests: string  // Preferences for lingerie styles, sizes, brands, etc.
+  ID?: number
+  style: string
+  budget?: number
+  guestCount?: number
+  specialRequests?: string
+  notes?: string
+  favoriteColors?: string[]
+  preferredBra?: string
+  preferredModel?: string
+  preferredPanties?: string
+  size?: string
+  allowedModels?: string[]
+  notAllowedModels?: string
 }
 
 export enum ShowerStatus {
@@ -60,11 +76,14 @@ export enum ShowerStatus {
 }
 
 export interface Catalog {
-  id: string
-  showerId: string
-  name: string
-  products: Product[]
-  status: CatalogStatus
+  ID: string
+  showerId?: string
+  name?: string
+  products?: Product[]
+  status?: CatalogStatus
+  approved: boolean
+  url: string
+  package: string
   createdAt: string
   updatedAt: string
 }

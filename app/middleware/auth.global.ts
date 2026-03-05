@@ -8,7 +8,11 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   await checkAuth()
   
   // If authenticated and trying to access login/signup, redirect to home
+  // Exception: allow /signup when the user is resuming the onboarding flow
   if (isAuthenticated.value && (to.path === '/login' || to.path === '/signup')) {
+    if (to.path === '/signup' && sessionStorage.getItem('signup-current-step')) {
+      return
+    }
     return navigateTo('/', { replace: true })
   }
   

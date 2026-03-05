@@ -99,7 +99,7 @@
                     Descrição
                   </th>
                   <th
-                    class="text-center py-3 px-4 text-sm font-semibold text-gray-700"
+                    class="text-right py-3 px-4 text-sm font-semibold text-gray-700"
                   >
                     Ações
                   </th>
@@ -108,7 +108,7 @@
               <tbody>
                 <tr
                   v-for="product in products"
-                  :key="product.ID"
+                  :key="product.id"
                   class="border-b border-gray-100 hover:bg-gray-50"
                 >
                   <td class="py-3 px-4 text-sm font-medium text-gray-900">
@@ -117,29 +117,39 @@
                   <td class="py-3 px-4 text-sm text-gray-600">
                     {{ product.description }}
                   </td>
-                  <td class="py-3 px-4 text-center">
-                    <UModal
-                      :title="product.name"
-                      :close="{
-                        color: 'primary',
-                        variant: 'outline',
-                        class: 'rounded-full',
-                      }"
-                    >
-                      <UButton
-                        label="Visualizar Imagem"
-                        color="neutral"
-                        variant="subtle"
-                      />
-
-                      <template #body>
-                        <img
-                          :src="product.image_url"
-                          alt="Imagem do produto"
-                          class="w-full h-auto rounded-md mb-4"
+                  <td class="py-3 px-4 text-right">
+                    <div class="flex items-center justify-end gap-2">
+                      <UModal
+                        :title="product.name"
+                        :close="{
+                          color: 'primary',
+                          variant: 'outline',
+                          class: 'rounded-full',
+                        }"
+                      >
+                        <UButton
+                          label="Visualizar Imagem"
+                          color="neutral"
+                          variant="subtle"
                         />
-                      </template>
-                    </UModal>
+
+                        <template #body>
+                          <img
+                            :src="productImages[product.id]"
+                            alt="Imagem do produto"
+                            class="w-full h-auto rounded-md mb-4"
+                          />
+                        </template>
+                      </UModal>
+
+                      <UButton
+                        label="Excluir"
+                        color="error"
+                        variant="subtle"
+                        icon="i-heroicons-trash"
+                        @click="openDeleteModal(product)"
+                      />
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -186,6 +196,33 @@
       </div>
     </div>
   </div>
+
+  <!-- Delete Confirmation Modal -->
+  <UModal v-model:open="deleteModalOpen" title="Confirmar Exclusão">
+    <template #body>
+      <p class="text-gray-700">
+        Tem certeza que deseja excluir o produto
+        <span class="font-semibold">{{ productToDelete?.name }}</span>?
+        Essa ação não pode ser desfeita.
+      </p>
+    </template>
+    <template #footer>
+      <div class="flex justify-end gap-3">
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="outline"
+          @click="deleteModalOpen = false"
+        />
+        <UButton
+          label="Excluir"
+          color="error"
+          :loading="deleting"
+          @click="handleDeleteProduct"
+        />
+      </div>
+    </template>
+  </UModal>
 </template>
 
 <script setup lang="ts">
@@ -197,13 +234,10 @@ definePageMeta({
 const { apiCall } = useApi();
 
 interface Product {
-  ID: number;
-  CreatedAt: string;
-  UpdatedAt: string;
-  DeletedAt: string | null;
+  id: number;
   name: string;
   description: string;
-  image_url: string;
+  is_exclusive: boolean;
 }
 
 interface ProductsResponse {
@@ -217,6 +251,7 @@ interface ProductsResponse {
 }
 
 const products = ref<Product[]>([]);
+const productImages = ref<Record<number, string>>({});
 const pagination = ref({
   page: 1,
   page_size: 10,
@@ -225,6 +260,9 @@ const pagination = ref({
 });
 const loading = ref(false);
 const creating = ref(false);
+const deleting = ref(false);
+const deleteModalOpen = ref(false);
+const productToDelete = ref<Product | null>(null);
 const selectedFile = ref<File | null>(null);
 
 const newProduct = reactive({
@@ -262,6 +300,18 @@ const fetchProducts = async (page: number = 1) => {
     );
     products.value = response.data;
     pagination.value = response.pagination;
+
+    // Fetch images in parallel
+    const imageResults = await Promise.allSettled(
+      response.data.map((p) =>
+        apiCall<{ image_url: string }>(`/api/products/${p.id}/image`),
+      ),
+    );
+    imageResults.forEach((result, i) => {
+      if (result.status === "fulfilled") {
+        productImages.value[response.data[i].id] = result.value.image_url;
+      }
+    });
   } catch (error) {
     console.error("Error fetching products:", error);
     useToast().add({
@@ -310,6 +360,41 @@ const handleCreateProduct = async () => {
     });
   } finally {
     creating.value = false;
+  }
+};
+
+const openDeleteModal = (product: Product) => {
+  productToDelete.value = product;
+  deleteModalOpen.value = true;
+};
+
+const handleDeleteProduct = async () => {
+  if (!productToDelete.value) return;
+  deleting.value = true;
+  try {
+    await apiCall(`/api/products/${productToDelete.value.id}`, {
+      method: "DELETE",
+    });
+
+    useToast().add({
+      title: "Produto excluído com sucesso!",
+      color: "green",
+      icon: "i-heroicons-check-circle",
+    });
+
+    deleteModalOpen.value = false;
+    productToDelete.value = null;
+    await fetchProducts(pagination.value.page);
+  } catch (error: any) {
+    console.error("Error deleting product:", error);
+    useToast().add({
+      title: "Erro ao excluir produto",
+      description: error.message || "Tente novamente",
+      color: "red",
+      icon: "i-heroicons-exclamation-triangle",
+    });
+  } finally {
+    deleting.value = false;
   }
 };
 

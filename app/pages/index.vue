@@ -17,8 +17,11 @@
       <UCard>
         <p class="text-gray-500">Você ainda não criou nenhum chá.</p>
         <p class="text-sm text-gray-400 mt-2">
-          Clique no botão acima para começar!
+          Clique no botão abaixo para começar!
         </p>
+        <UButton class="mt-4" color="primary" @click="goToSignupStep2">
+          Criar meu chá
+        </UButton>
       </UCard>
     </div>
 
@@ -32,10 +35,13 @@
                 Anfitriã: {{ shower.host.username }}
               </p>
             </div>
-            <UBadge :color="shower.catalog.approved ? 'green' : 'yellow'">
+            <UBadge v-if="shower.catalog" :color="shower.catalog.approved ? 'green' : 'yellow'">
               {{
                 shower.catalog.approved ? "Aprovado" : "Aguardando Aprovação"
               }}
+            </UBadge>
+            <UBadge v-else color="gray">
+              Sem Catálogo
             </UBadge>
           </div>
         </template>
@@ -70,14 +76,14 @@
                     formatDate(shower.wedding_date)
                   }}</span>
                 </div>
-                <div class="flex items-start gap-2">
+                <div v-if="shower.catalog" class="flex items-start gap-2">
                   <span class="text-gray-500 min-w-[120px]">Embalagem:</span>
                   <span class="font-medium">{{ shower.catalog.package }}</span>
                 </div>
               </div>
             </div>
 
-            <div v-if="shower.catalog.url" class="space-y-2">
+            <div v-if="shower.catalog?.url" class="space-y-2">
               <UButton
                 :to="`/shower/${shower.ID}/catalog`"
                 color="primary"
@@ -97,7 +103,7 @@
           </div>
 
           <!-- Preferences -->
-          <div class="space-y-4">
+          <div v-if="shower.preferences" class="space-y-4">
             <div>
               <h4 class="font-semibold text-gray-700 mb-2">Preferências</h4>
               <div class="space-y-2 text-sm">
@@ -132,7 +138,7 @@
               </div>
             </div>
 
-            <div v-if="shower.preferences.favoriteColors.length > 0">
+            <div v-if="shower.preferences?.favoriteColors?.length > 0">
               <h5 class="text-sm font-semibold text-gray-700 mb-2">
                 Cores Favoritas
               </h5>
@@ -151,7 +157,7 @@
               </div>
             </div>
 
-            <div v-if="shower.preferences.allowedModels.length > 0">
+            <div v-if="shower.preferences?.allowedModels?.length > 0">
               <h5 class="text-sm font-semibold text-gray-700 mb-2">
                 Modelos Permitidos
               </h5>
@@ -168,7 +174,7 @@
               </div>
             </div>
 
-            <div v-if="shower.preferences.notes">
+            <div v-if="shower.preferences?.notes">
               <h5 class="text-sm font-semibold text-gray-700 mb-1">
                 Observações
               </h5>
@@ -177,7 +183,7 @@
               </p>
             </div>
 
-            <div v-if="shower.preferences.notAllowedModels">
+            <div v-if="shower.preferences?.notAllowedModels">
               <h5 class="text-sm font-semibold text-gray-700 mb-1">
                 Modelos Não Permitidos
               </h5>
@@ -185,6 +191,22 @@
                 {{ shower.preferences.notAllowedModels }}
               </p>
             </div>
+          </div>
+
+          <div v-else class="space-y-4">
+            <UAlert color="yellow" icon="i-heroicons-exclamation-triangle">
+              <template #title>
+                Preferências não definidas
+              </template>
+              <template #description>
+                Você ainda não definiu as preferências do seu chá de lingerie.
+              </template>
+              <template #footer>
+                <UButton :to="`/shower/${shower.ID}/preferences`" color="yellow" size="sm">
+                  Definir Preferências
+                </UButton>
+              </template>
+            </UAlert>
           </div>
         </div>
       </UCard>
@@ -197,6 +219,8 @@ definePageMeta({
   middleware: ["user"],
   layout: "authenticated",
 });
+
+const config = useRuntimeConfig();
 
 interface ShowerResponse {
   ID: number;
@@ -212,7 +236,7 @@ interface ShowerResponse {
     approved: boolean;
     url: string;
     package: string;
-  };
+  } | null;
   preferences: {
     style: string;
     favoriteColors: string[];
@@ -223,10 +247,11 @@ interface ShowerResponse {
     allowedModels: string[];
     notAllowedModels?: string;
     notes?: string;
-  };
+  } | null;
 }
 
 const { token } = useAuth();
+const router = useRouter();
 const showers = ref<ShowerResponse[]>([]);
 const loading = ref(true);
 const error = ref("");
@@ -273,10 +298,15 @@ const getTextColor = (colorName: string): string => {
   return darkText.includes(colorName) ? "#1F2937" : "#FFFFFF";
 };
 
+const goToSignupStep2 = () => {
+  sessionStorage.setItem("signup-current-step", "2");
+  router.push("/signup");
+};
+
 // Fetch showers on mount
 onMounted(async () => {
   try {
-    const response = await fetch("http://localhost:8080/api/showers/me", {
+    const response = await fetch(`${config.public.apiBase}/api/showers/me`, {
       headers: {
         Authorization: `Bearer ${token.value}`,
       },
@@ -287,10 +317,12 @@ onMounted(async () => {
     }
 
     const data = await response.json()
+    console.log("API Response:", data)
     showers.value = data.data || []
   } catch (err) {
     const error_obj = err as Error
     error.value = error_obj.message || 'Erro ao carregar dados'
+    console.error("Error fetching showers:", err)
   } finally {
     loading.value = false;
   }

@@ -7,7 +7,7 @@
       </NuxtLayout>
     </div>
     <div v-else class="min-h-screen w-full flex items-center justify-center">
-      <div class="w-full text-center">
+      <div class="w-full">
         <UIcon
           name="i-heroicons-arrow-path"
           class="w-8 h-8 text-primary animate-spin"
