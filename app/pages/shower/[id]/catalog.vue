@@ -119,7 +119,7 @@
               <div>
                 <p class="text-sm font-medium text-gray-500">Valor Total</p>
                 <p class="text-2xl font-bold text-gray-900">
-                  R$ {{ totalValue.toFixed(2) }}
+                  R$ {{ (totalValue / 100).toFixed(2).replace(".", ",") }}
                 </p>
               </div>
             </div>
@@ -194,7 +194,7 @@
                 </p>
                 <div class="pt-2 border-t border-gray-200">
                   <p class="text-2xl font-bold text-pink-600">
-                    R$ {{ product.price.toFixed(2) }}
+                    R$ {{ (product.price / 100).toFixed(2).replace(".", ",") }}
                   </p>
                 </div>
               </div>
