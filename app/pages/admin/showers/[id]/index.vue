@@ -223,10 +223,7 @@ const shower = ref<Shower | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
-const formatDate = (date?: string) => {
-  if (!date) return "N/A";
-  return new Date(date).toLocaleDateString("pt-BR");
-};
+const { formatDate } = useDate();
 
 const loadShower = async () => {
   try {

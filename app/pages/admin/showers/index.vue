@@ -140,10 +140,7 @@ const filteredShowers = computed(() => {
   })
 })
 
-const formatDate = (date?: string) => {
-  if (!date) return 'N/A'
-  return new Date(date).toLocaleDateString('pt-BR')
-}
+const { formatDate } = useDate()
 
 const loadShowers = async (page: number = 1) => {
   try {

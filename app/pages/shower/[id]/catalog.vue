@@ -230,23 +230,46 @@
                 </div>
               </div>
 
-              <form class="space-y-6" @submit.prevent="handleReview">
+              <!-- Comments list -->
+              <div v-if="commentsLoading" class="text-center py-4 text-gray-400">
+                Carregando comentários...
+              </div>
+              <div v-else-if="comments.length > 0" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                <div
+                  v-for="comment in comments"
+                  :key="comment.id"
+                  class="flex gap-3"
+                >
+                  <div class="flex-shrink-0 h-9 w-9 rounded-full bg-pink-200 flex items-center justify-center text-pink-700 font-bold uppercase text-sm">
+                    {{ comment.author.username.charAt(0) }}
+                  </div>
+                  <div class="flex-1 bg-white rounded-lg px-4 py-3 border border-pink-100">
+                    <div class="flex items-baseline justify-between gap-2 mb-1">
+                      <span class="font-semibold text-sm text-gray-900">{{ comment.author.username }}</span>
+                      <span class="text-xs text-gray-400">{{ formatCommentDate(comment.CreatedAt) }}</span>
+                    </div>
+                    <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ comment.content }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <form class="space-y-6" @submit.prevent="submitComment">
                 <UFormGroup
                   label="Comentários ou Sugestões"
                   name="comments"
-                  help="Opcional: Adicione comentários se desejar solicitar alterações"
+                  help="Obrigatório: Adicione um comentário antes de aprovar ou solicitar alterações"
                 >
                   <UTextarea
                     v-model="review.comments"
                     placeholder="Ex: Gostaria de adicionar mais opções na cor vermelha..."
                     :rows="4"
-                    :disabled="loading"
+                    :disabled="commentLoading"
                     class="w-full"
                   />
                 </UFormGroup>
 
                 <div
-                  v-if="error"
+                  v-if="error || commentError"
                   class="p-4 bg-red-50 border border-red-200 rounded-lg"
                 >
                   <div class="flex items-center space-x-2">
@@ -254,7 +277,7 @@
                       name="i-heroicons-exclamation-circle"
                       class="h-5 w-5 text-red-600"
                     />
-                    <p class="text-sm text-red-700">{{ error }}</p>
+                    <p class="text-sm text-red-700">{{ error || commentError }}</p>
                   </div>
                 </div>
 
@@ -265,9 +288,10 @@
                     <UButton
                       type="button"
                       :loading="loading"
+                      :disabled="!review.comments.trim()"
                       color="green"
                       size="lg"
-                      class="flex-1 border border-green-600 max-w-xs"
+                      class="flex-1 border border-green-600 max-w-xs hover:bg-green-600 hover:text-white transition-colors duration-300 cursor-pointer"
                       @click="handleApprove"
                     >
                       <Icon name="i-heroicons-check-circle" class="mr-2" />
@@ -275,11 +299,12 @@
                     </UButton>
                     <UButton
                       type="submit"
-                      :loading="loading"
+                      :loading="commentLoading"
+                      :disabled="!review.comments.trim()"
                       color="orange"
                       variant="soft"
                       size="lg"
-                      class="flex-1 border border-orange-400 max-w-xs"
+                      class="flex-1 border border-orange-400 max-w-xs hover:bg-orange-400 hover:text-white transition-colors duration-300 cursor-pointer"
                     >
                       <Icon
                         name="i-heroicons-chat-bubble-left-right"
@@ -296,7 +321,7 @@
                       variant="ghost"
                       size="lg"
                       class="text-center border border-gray-300 max-w-xs"
-                      :disabled="loading"
+                      :disabled="commentLoading"
                     >
                       Voltar
                     </UButton>
@@ -335,6 +360,7 @@
             </div>
           </UCard>
         </div>
+
       </div>
     </template>
   </div>
@@ -343,6 +369,23 @@
 <script setup lang="ts">
 import type { Catalog } from "~/types";
 import { CatalogStatus } from "~/types";
+
+interface CatalogComment {
+  ID: number;
+  content: string;
+  author_id: number;
+  author: {
+    id: number;
+    username: string;
+    email: string;
+    phone_number: string;
+    role: number;
+  };
+  catalog_id: number;
+  CreatedAt: string;
+  UpdatedAt: string;
+  DeletedAt: string | null;
+}
 
 definePageMeta({
   middleware: ["user"],
@@ -396,6 +439,43 @@ const totalValue = computed(
   () => catalog.value?.products.reduce((sum, p) => sum + p.price, 0) || 0,
 );
 
+// Comments state
+const comments = ref<CatalogComment[]>([]);
+const commentsLoading = ref(false);
+const commentLoading = ref(false);
+const commentError = ref<string | null>(null);
+
+const { formatDateTime: formatCommentDate } = useDate();
+
+const fetchComments = async (catalogId: string) => {
+  commentsLoading.value = true;
+  try {
+    comments.value = await apiCall<CatalogComment[]>(`/api/catalogs/${catalogId}/comments`);
+  } catch (err) {
+    console.error("Error fetching comments:", err);
+  } finally {
+    commentsLoading.value = false;
+  }
+};
+
+const submitComment = async () => {
+  if (!review.comments.trim() || !catalog.value) return;
+  commentLoading.value = true;
+  commentError.value = null;
+  try {
+    const created = await apiCall<CatalogComment>(`/api/catalogs/${catalog.value.id}/comments`, {
+      method: "POST",
+      body: { content: review.comments.trim() },
+    });
+    comments.value.push(created);
+    review.comments = "";
+  } catch (err: any) {
+    commentError.value = err?.data?.error || err?.message || "Erro ao enviar comentário";
+  } finally {
+    commentLoading.value = false;
+  }
+};
+
 // Fetch catalog on mount
 onMounted(async () => {
   try {
@@ -403,9 +483,11 @@ onMounted(async () => {
       `/api/showers/${showerId}/catalog`,
     );
 
+    const catalogId = response.catalog.ID.toString();
+
     // Transform backend response to frontend format
     catalog.value = {
-      id: response.catalog.ID.toString(),
+      id: catalogId,
       showerId: showerId as string,
       name: `Catálogo - ${response.catalog.package}`,
       status: response.catalog.approved
@@ -423,6 +505,8 @@ onMounted(async () => {
       createdAt: response.catalog.CreatedAt,
       updatedAt: response.catalog.UpdatedAt,
     };
+
+    await fetchComments(catalogId);
   } catch (err) {
     const apiError = err as { data?: { error?: string } };
     error.value = apiError.data?.error || "Erro ao carregar catálogo";

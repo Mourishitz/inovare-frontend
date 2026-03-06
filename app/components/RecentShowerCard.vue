@@ -21,12 +21,7 @@ const props = defineProps<{
   shower: Shower;
 }>();
 
-const formattedDate = computed(() => {
-  const date = new Date(props.shower.shower_date);
-  return date.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-});
+const { formatDate } = useDate();
+
+const formattedDate = computed(() => formatDate(props.shower.shower_date));
 </script>
