@@ -491,7 +491,7 @@
                       <img
                         :src="option.image"
                         :alt="option.label"
-                        class="w-24 h-24 object-cover rounded-lg flex-shrink-0"
+                        class="w-24 h-24 object-contain rounded-lg flex-shrink-0"
                       />
                       <div class="flex items-center gap-3 flex-1">
                         <div class="flex-shrink-0">

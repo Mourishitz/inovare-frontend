@@ -161,7 +161,7 @@
                   v-if="product.imageUrl"
                   :src="product.imageUrl"
                   :alt="product.name"
-                  class="w-full h-full object-cover"
+                  class="w-full h-full object-contain"
                 />
                 <div
                   v-else

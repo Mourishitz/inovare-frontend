@@ -35,14 +35,15 @@
                 Anfitriã: {{ shower.host.username }}
               </p>
             </div>
-            <UBadge v-if="shower.catalog" :color="shower.catalog.approved ? 'green' : 'yellow'">
+            <UBadge
+              v-if="shower.catalog"
+              :color="shower.catalog.approved ? 'green' : 'yellow'"
+            >
               {{
                 shower.catalog.approved ? "Aprovado" : "Aguardando Aprovação"
               }}
             </UBadge>
-            <UBadge v-else color="gray">
-              Sem Catálogo
-            </UBadge>
+            <UBadge v-else color="gray"> Sem Catálogo </UBadge>
           </div>
         </template>
 
@@ -143,17 +144,17 @@
                 Cores Favoritas
               </h5>
               <div class="flex flex-wrap gap-1">
-                <span
+                <UBadge
                   v-for="color in shower.preferences.favoriteColors"
                   :key="color"
+                  variant="outline"
+                  color="neutral"
                   :style="{
-                    backgroundColor: getColorHex(color),
-                    color: getTextColor(color),
+                    color: getColorHex(color),
                   }"
-                  class="px-2 py-1 rounded text-xs font-medium"
                 >
                   {{ color }}
-                </span>
+                </UBadge>
               </div>
             </div>
 
@@ -195,14 +196,16 @@
 
           <div v-else class="space-y-4">
             <UAlert color="yellow" icon="i-heroicons-exclamation-triangle">
-              <template #title>
-                Preferências não definidas
-              </template>
+              <template #title> Preferências não definidas </template>
               <template #description>
                 Você ainda não definiu as preferências do seu chá de lingerie.
               </template>
               <template #footer>
-                <UButton :to="`/shower/${shower.ID}/preferences`" color="yellow" size="sm">
+                <UButton
+                  :to="`/shower/${shower.ID}/preferences`"
+                  color="yellow"
+                  size="sm"
+                >
                   Definir Preferências
                 </UButton>
               </template>
@@ -278,19 +281,6 @@ const getColorHex = (colorName: string): string => {
   return colorMap[colorName] || "#E5E7EB";
 };
 
-const getTextColor = (colorName: string): string => {
-  const darkText = [
-    "Branco",
-    "Rosê (Rosa Claro)",
-    "Rosa",
-    "Pink",
-    "Lilás",
-    "Amarelo",
-    "Nude",
-  ];
-  return darkText.includes(colorName) ? "#1F2937" : "#FFFFFF";
-};
-
 const goToSignupStep2 = () => {
   sessionStorage.setItem("signup-current-step", "2");
   router.push("/signup");
@@ -309,13 +299,13 @@ onMounted(async () => {
       throw new Error("Falha ao carregar chás de lingerie");
     }
 
-    const data = await response.json()
-    console.log("API Response:", data)
-    showers.value = data.data || []
+    const data = await response.json();
+    console.log("API Response:", data);
+    showers.value = data.data || [];
   } catch (err) {
-    const error_obj = err as Error
-    error.value = error_obj.message || 'Erro ao carregar dados'
-    console.error("Error fetching showers:", err)
+    const error_obj = err as Error;
+    error.value = error_obj.message || "Erro ao carregar dados";
+    console.error("Error fetching showers:", err);
   } finally {
     loading.value = false;
   }

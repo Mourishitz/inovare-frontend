@@ -26,17 +26,70 @@ npx eslint .             # Run ESLint on entire project
 ```
 
 ### Testing
-**No tests currently configured.** If adding tests:
-```bash
-# Run all tests (requires vitest setup)
-npx vitest run
+**No tests currently configured.** If adding tests, use `@nuxt/test-utils` (already installed).
 
-# Run a single test file
-npx vitest run path/to/test.spec.ts
+---
 
-# Watch mode
-npx vitest
+## Directory Structure
+
 ```
+app/
+├── app.vue                      # Root component — waits for authInitialized before rendering
+├── assets/css/main.css          # Tailwind + custom brand/rose color theme
+├── components/
+│   ├── DatePicker.vue           # UInputDate + UCalendar wrapper (locale: en-GB)
+│   └── RecentShowerCard.vue     # Shower summary card, links to /admin/showers/[id]
+├── composables/
+│   ├── useApi.ts                # $fetch wrapper with auth headers + request logging
+│   ├── useAuth.ts               # JWT auth state management (cookie + localStorage)
+│   └── useDate.ts               # Date parsing and pt-BR formatting
+├── layouts/
+│   ├── default.vue              # Minimal light background (public pages)
+│   ├── auth.vue                 # No nav (login/signup)
+│   ├── authenticated.vue        # Header with logo, username, logout + footer
+│   └── admin.vue                # Header with nav (Dashboard, Chás, Lingerie) + footer
+├── middleware/
+│   ├── auth.global.ts           # Global: redirects unauthenticated users to /login
+│   ├── user.ts                  # BRIDE role guard, redirects admins to /admin
+│   └── admin.ts                 # ADMIN role guard, redirects non-admins to /
+├── pages/
+│   ├── index.vue                # Bride dashboard: shower list with preferences/catalog info
+│   ├── login.vue                # Login form
+│   ├── signup.vue               # Multi-step registration
+│   ├── shower/
+│   │   ├── create.vue           # Create new shower
+│   │   └── [id]/
+│   │       ├── preferences.vue  # Set shower preferences
+│   │       └── catalog.vue      # View approved catalog
+│   └── admin/
+│       ├── index.vue            # Admin dashboard
+│       ├── showers.vue          # Shower list
+│       ├── products.vue         # Product CRUD
+│       └── showers/[id]/
+│           ├── index.vue        # Shower detail/edit
+│           └── catalog/create.vue # Create/edit catalog
+├── plugins/
+│   └── auth.client.ts           # Calls checkAuth() on client mount to restore session
+└── types/index.ts               # All TypeScript types and enums
+```
+
+---
+
+## Pages & Routes
+
+| Route | Middleware | Layout | Purpose |
+|-------|-----------|--------|---------|
+| `/login` | — | `auth` | Login form |
+| `/signup` | — | `auth` | Multi-step registration |
+| `/` | `auth.global`, `user` | `authenticated` | Bride shower dashboard |
+| `/shower/create` | `user` | `authenticated` | Create new shower |
+| `/shower/[id]/preferences` | `user` | `authenticated` | Set shower preferences |
+| `/shower/[id]/catalog` | `user` | `authenticated` | View catalog |
+| `/admin` | `admin` | `admin` | Admin dashboard |
+| `/admin/showers` | `admin` | `admin` | All showers list |
+| `/admin/showers/[id]` | `admin` | `admin` | Shower detail/edit |
+| `/admin/showers/[id]/catalog/create` | `admin` | `admin` | Create/edit catalog |
+| `/admin/products` | `admin` | `admin` | Product CRUD |
 
 ---
 
@@ -60,17 +113,17 @@ npx vitest
 - Use `<script setup lang="ts">` syntax
 - Define props with `defineProps<{...}>()` and type definitions
 - Use `computed` for derived state
-- Components auto-imported; no explicit imports needed
+- Components are auto-imported; no explicit imports needed
 
 **Pages (`app/pages/`):**
-- Use `definePageMeta()` for route configuration
-- Set middleware and layout per page
-- Use `navigateTo()` for routing
+- Use `definePageMeta()` for route configuration (middleware + layout)
+- Use `navigateTo()` for programmatic routing
+- Use `import.meta.client` for browser-only code to prevent SSR issues
 
 **Middleware (`app/middleware/`):**
-- `auth.ts` - Requires authentication
-- `user.ts` - BRIDE role only
-- `admin.ts` - ADMIN role only
+- `auth.global.ts` — runs on every route (client-side only)
+- `user.ts` — BRIDE role only
+- `admin.ts` — ADMIN role only
 - Chain middleware: `definePageMeta({ middleware: ['auth', 'admin'] })`
 
 ### Component Library (@nuxt/ui)
@@ -78,6 +131,12 @@ npx vitest
 - Use `ClientOnly` wrapper for client-side only components
 - Icons via Heroicons: `i-heroicons-xxx`
 - TailwindCSS utility classes for styling
+- For color chip displays, use `UBadge variant="outline"` with inline `borderColor` and `color` styles driven by a hex lookup (not `backgroundColor`)
+- Toast notifications via `useToast()`
+
+### Images
+- Always use `object-contain` on `<img>` tags to show the full image without cropping
+- Only use `object-cover` when intentional cropping is required by design
 
 ### File Naming Conventions
 - **Components:** PascalCase (e.g., `RecentShowerCard.vue`)
@@ -95,81 +154,89 @@ import { useRouter } from 'vue-router'
 import type { User, Shower } from '~/types'
 import { UserRole } from '~/types'
 
-// 3. Component/Composable imports (if needed)
+// 3. Composable imports (usually auto-imported, add only if needed)
 import { useAuth } from '~/composables/useAuth'
-
-// 4. Local component imports (rarely needed due to auto-import)
 ```
 
 ### Error Handling
 - Use try/catch in async functions
 - Display errors to users via `UAlert` component
+- Toast notifications via `useToast()` for transient feedback
 - Log errors to console for debugging
-- Handle API errors in composables and propagate meaningful messages
 
 ### API Calls
-- Use `useApi()` composable for authenticated requests
-- Token automatically included via Authorization header
+- Use `useApi()` composable for authenticated requests — automatically includes `Authorization: Bearer <token>` header
+- Base URL from `runtimeConfig.public.apiBase`
 - Always handle errors and show user feedback
-- Log requests/responses for debugging (already built into useApi)
+- Requests and responses are logged to console by `useApi` automatically
+- Some pages use direct `fetch()` (e.g., `login.vue`) — prefer `useApi` for new code
 
-### Layouts (`app/layouts/`)
-- `default.vue` - Public pages
-- `auth.vue` - Login/signup pages
-- `authenticated.vue` - Logged-in user pages
-- `admin.vue` - Admin pages with navigation
+### Date Formatting
+- Use `useDate()` composable: `formatDate(str)` → "dd/mm/yyyy", `formatDateTime(str)` → "dd/mm/yyyy HH:mm"
+- Handles backend microsecond timestamps via `parseBackendDate()`
+- Locale: `pt-BR`
 
 ---
 
 ## Architecture
 
 ### Role-Based Access
-- **BRIDE (role: 1):** Creates/manages showers, sets preferences, reviews catalogs
+- **BRIDE (role: 1):** Creates/manages own showers, sets preferences, reviews catalogs
 - **ADMIN (role: 2):** Manages all showers, creates product catalogs
 
 ### Authentication Flow
-1. Login via `/api/login` endpoint (backend)
-2. JWT token + user object stored in cookie (`auth-token`) and localStorage
-3. Token automatically included in API requests via `useApi()` composable
+1. `POST /api/login` with email + password
+2. JWT token saved to cookie `auth-token` (7-day maxAge, lax SameSite); user object saved to `localStorage` as `auth-user`
+3. `plugins/auth.client.ts` calls `checkAuth()` on mount to restore session from storage
+4. `app.vue` waits for `authInitialized` before rendering to prevent flash
+5. `auth.global.ts` runs on every route: redirects unauthenticated users to `/login`, authenticated users away from `/login`/`/signup`
+6. JWT `exp` claim decoded client-side to detect expiry
+7. Logout clears cookie, localStorage, and reactive state, then navigates to `/login`
+
+### Multi-Step Signup
+- Step tracking stored in `sessionStorage['signup-current-step']`
+- `auth.global.ts` allows `/signup` if this key is set (prevents redirect loop mid-flow)
+
+### Shower Workflow (Status Progression)
+1. **DRAFT** → Bride creates shower
+2. **PREFERENCES_SET** → Bride sets preferences
+3. **CATALOG_IN_PROGRESS** → Admin begins catalog
+4. **CATALOG_READY** → Admin completes catalog, awaiting bride approval
+5. **APPROVED** → Bride approves
+6. **COMPLETED** → Event completed
 
 ### Shower Entity Structure
-The Shower entity has these main fields:
-- `ID` - Unique identifier
-- `guests` - Number of guests
-- `shower_date` - Date of the shower event
-- `wedding_date` - Date of the wedding
-- `location` - Event location
-- `host_id` - ID of the bride hosting
-- `host` - Nested User object (username, email, phone_number, role)
-- `catalog_id` - Associated catalog ID (may be null)
-- `catalog` - Nested Catalog object (approved, url, package)
-- `preferences_id` - Associated preferences ID (may be null)
-- `preferences` - Nested Preferences object:
-  - `style` - e.g., "Sensual", "Romântico"
-  - `notes` - Additional notes
-  - `favoriteColors` - Array of colors
-  - `preferredBra`, `preferredModel`, `preferredPanties` - Lingerie preferences
-  - `size` - Size preference
-  - `allowedModels`, `notAllowedModels` - Model restrictions
+- `ID`, `guests`, `shower_date`, `wedding_date`, `location`
+- `host_id`, `host` — nested `User` (username, email, phone_number, role)
+- `catalog_id`, `catalog` — nested `Catalog` (approved, url, package, products)
+- `preferences_id`, `preferences` — nested `ShowerPreferences`:
+  - `style`, `notes`, `favoriteColors[]`
+  - `preferredBra`, `preferredModel`, `preferredPanties`, `size`
+  - `allowedModels[]`, `notAllowedModels`
+
+### Types (`app/types/index.ts`)
+- **Enums:** `UserRole` (BRIDE=1, ADMIN=2), `ShowerStatus`, `CatalogStatus`
+- **Interfaces:** `User`, `AuthState`, `LoginCredentials`, `LoginResponse`, `Shower`, `ShowerPreferences`, `Catalog`, `Product`, `Review`, `ApiResponse<T>`
 
 ---
 
 ## Configuration
 
 ### Environment Variables
-Create `.env` file:
 ```
 NUXT_PUBLIC_API_BASE=http://localhost:8080
 ```
 
-### Date Formatting
-Use Brazilian format: `date.toLocaleDateString('pt-BR')`
+### Nuxt Config Highlights
+- `ssr: true` — but all auth checks use `import.meta.client`
+- `ui.colorMode: false` — dark mode disabled
+- Modules: `@nuxt/content`, `@nuxt/eslint`, `@nuxt/image`, `@nuxt/scripts`, `@nuxt/test-utils`, `@nuxt/ui`
 
----
+### Color Theme (`assets/css/main.css` + `app.config.ts`)
+- Primary: custom `brand` palette (brownish, ~`#a66155`)
+- Secondary: custom `rose` palette (~`#dfb3a4`)
+- Override via CSS variables: `--ui-primary`, `--ui-secondary`
 
-## Additional Conventions (from Copilot Instructions)
+### Deployment
+- Firebase hosting configured (`firebase.json`, `.firebaserc`)
 
-- Portuguese (pt-BR) is the primary language for all UI labels and content
-- Color mode disabled in Nuxt config: `ui.colorMode: false`
-- Runtime config exposes `apiBase` to client via `public.apiBase`
-- Use `import.meta.client` for browser-only code

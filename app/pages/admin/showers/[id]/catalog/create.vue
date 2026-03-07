@@ -91,7 +91,7 @@
                 v-if="product.image_url"
                 :src="product.image_url"
                 :alt="product.name"
-                class="w-full h-32 object-cover rounded"
+                class="w-full h-32 object-contain rounded"
               />
               <h3 class="font-semibold">{{ product.name }}</h3>
               <p class="text-sm text-gray-600">{{ product.description }}</p>
@@ -188,7 +188,7 @@
               v-if="modalProduct.image_url"
               :src="modalProduct.image_url"
               :alt="modalProduct.name"
-              class="w-full h-48 object-cover rounded"
+              class="w-full h-48 object-contain rounded"
             />
             <div>
               <p class="font-semibold text-lg">{{ modalProduct.name }}</p>
@@ -310,7 +310,7 @@
                   v-if="newProduct.image_url"
                   :src="newProduct.image_url"
                   alt="Preview"
-                  class="w-full h-40 object-cover rounded"
+                  class="w-full h-40 object-contain rounded"
                 />
               </div>
             </UFormField>

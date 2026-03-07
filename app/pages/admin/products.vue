@@ -46,7 +46,7 @@
             <img
               :src="newProduct.image_url"
               alt="Preview"
-              class="w-full h-64 object-cover rounded-lg"
+              class="w-full h-64 object-contain rounded-lg"
             />
           </div>
 
