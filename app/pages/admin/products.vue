@@ -143,6 +143,14 @@
                       </UModal>
 
                       <UButton
+                        label="Editar"
+                        color="primary"
+                        variant="subtle"
+                        icon="i-heroicons-pencil-square"
+                        @click="openEditModal(product)"
+                      />
+
+                      <UButton
                         label="Excluir"
                         color="error"
                         variant="subtle"
@@ -196,6 +204,66 @@
       </div>
     </div>
   </div>
+
+  <!-- Edit Product Modal -->
+  <UModal v-model:open="editModalOpen" title="Editar Produto" :close="{ color: 'primary', variant: 'outline', class: 'rounded-full' }">
+    <template #body>
+      <UForm :state="editProduct" @submit="handleEditProduct" class="space-y-5">
+        <UFormField label="Nome" name="name" required>
+          <UInput
+            class="w-full"
+            v-model="editProduct.name"
+            placeholder="Ex: Sutiã"
+            :disabled="editing"
+            size="xl"
+          />
+        </UFormField>
+
+        <UFormField label="Descrição" name="description" required>
+          <UTextarea
+            class="w-full"
+            v-model="editProduct.description"
+            placeholder="Descrição do produto"
+            :disabled="editing"
+            :rows="4"
+          />
+        </UFormField>
+
+        <UFormField label="Nova Imagem (opcional)" name="image">
+          <UFileUpload
+            v-model="editSelectedFile"
+            accept="image/*"
+            :disabled="editing"
+          />
+        </UFormField>
+
+        <div v-if="editPreviewUrl" class="mt-4">
+          <p class="text-sm font-medium text-gray-700 mb-2">Preview:</p>
+          <img
+            :src="editPreviewUrl"
+            alt="Preview"
+            class="w-full h-64 object-contain rounded-lg"
+          />
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="outline"
+            type="button"
+            @click="editModalOpen = false"
+          />
+          <UButton
+            label="Salvar Alterações"
+            color="primary"
+            type="submit"
+            :loading="editing"
+          />
+        </div>
+      </UForm>
+    </template>
+  </UModal>
 
   <!-- Delete Confirmation Modal -->
   <UModal v-model:open="deleteModalOpen" title="Confirmar Exclusão">
@@ -265,6 +333,20 @@ const deleteModalOpen = ref(false);
 const productToDelete = ref<Product | null>(null);
 const selectedFile = ref<File | null>(null);
 
+const editing = ref(false);
+const editModalOpen = ref(false);
+const editSelectedFile = ref<File | null>(null);
+const editProduct = reactive({
+  id: 0,
+  name: "",
+  description: "",
+  image_url: "",
+});
+
+const editPreviewUrl = computed(() =>
+  editProduct.image_url || (editProduct.id ? productImages.value[editProduct.id] : ""),
+);
+
 const newProduct = reactive({
   name: "",
   description: "",
@@ -288,6 +370,19 @@ watch(selectedFile, (file) => {
   const reader = new FileReader();
   reader.onload = (e) => {
     newProduct.image_url = e.target?.result as string;
+  };
+  reader.readAsDataURL(file);
+});
+
+watch(editSelectedFile, (file) => {
+  if (!file) {
+    editProduct.image_url = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    editProduct.image_url = e.target?.result as string;
   };
   reader.readAsDataURL(file);
 });
@@ -366,6 +461,52 @@ const handleCreateProduct = async () => {
 const openDeleteModal = (product: Product) => {
   productToDelete.value = product;
   deleteModalOpen.value = true;
+};
+
+const openEditModal = (product: Product) => {
+  editProduct.id = product.id;
+  editProduct.name = product.name;
+  editProduct.description = product.description;
+  editProduct.image_url = "";
+  editSelectedFile.value = null;
+  editModalOpen.value = true;
+};
+
+const handleEditProduct = async () => {
+  editing.value = true;
+  try {
+    const body: Record<string, unknown> = {
+      name: editProduct.name,
+      description: editProduct.description,
+    };
+    if (editProduct.image_url) {
+      body.image_url = editProduct.image_url;
+    }
+
+    await apiCall(`/api/products/${editProduct.id}`, {
+      method: "PATCH",
+      body,
+    });
+
+    useToast().add({
+      title: "Produto atualizado com sucesso!",
+      color: "green",
+      icon: "i-heroicons-check-circle",
+    });
+
+    editModalOpen.value = false;
+    await fetchProducts(pagination.value.page);
+  } catch (error: any) {
+    console.error("Error updating product:", error);
+    useToast().add({
+      title: "Erro ao atualizar produto",
+      description: error.message || "Tente novamente",
+      color: "red",
+      icon: "i-heroicons-exclamation-triangle",
+    });
+  } finally {
+    editing.value = false;
+  }
 };
 
 const handleDeleteProduct = async () => {

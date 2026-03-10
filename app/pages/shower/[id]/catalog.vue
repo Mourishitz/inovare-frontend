@@ -261,7 +261,7 @@
                 >
                   <UTextarea
                     v-model="review.comments"
-                    placeholder="Ex: Gostaria de adicionar mais opções na cor vermelha..."
+                    placeholder="Caso queira alterar alguma peça, pedimos que nos informe o número da peça e o motivo da troca, conforme exemplo abaixo:&#10;Trocas:&#10;05 – Lateral da calcinha fina, trocar por uma mais grossa"
                     :rows="4"
                     :disabled="commentLoading"
                     class="w-full"
