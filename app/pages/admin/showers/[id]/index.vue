@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="container mx-auto px-4 py-8">
     <div class="mb-8">
       <UButton
         to="/admin/showers"
@@ -9,7 +9,17 @@
       >
         Voltar
       </UButton>
-      <h1 class="text-3xl font-bold text-gray-900">Detalhes do Chá</h1>
+      <div class="flex items-center justify-between">
+        <h1 class="text-3xl font-bold text-gray-900">Detalhes do Chá</h1>
+        <UButton
+          :to="`/shower/${showerId}/catalog`"
+          variant="outline"
+          color="primary"
+          icon="i-heroicons-eye"
+        >
+          Visualizar como Noiva
+        </UButton>
+      </div>
     </div>
 
     <div v-if="loading" class="text-center py-8">
@@ -84,8 +94,15 @@
         <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <dt class="text-sm font-medium text-gray-500">Estilo</dt>
-            <dd class="mt-1 text-sm text-gray-900">
-              {{ shower.preferences.style }}
+            <dd class="mt-1 flex flex-wrap gap-1">
+              <UBadge
+                v-for="style in shower.preferences.style"
+                :key="style"
+                color="primary"
+                variant="soft"
+              >
+                {{ style }}
+              </UBadge>
             </dd>
           </div>
           <div>
@@ -116,21 +133,62 @@
           </div>
           <div>
             <dt class="text-sm font-medium text-gray-500">Cores Favoritas</dt>
-            <dd class="mt-1 text-sm text-gray-900">
-              <span v-if="shower.preferences.favoriteColors?.length">
-                {{ shower.preferences.favoriteColors.join(", ") }}
-              </span>
-              <span v-else class="text-gray-400">Nenhuma</span>
+            <dd class="mt-1 flex flex-wrap gap-1">
+              <UBadge
+                v-for="color in shower.preferences.favoriteColors"
+                :key="color"
+                variant="outline"
+                color="neutral"
+                :style="{ color: getColorHex(color) }"
+              >
+                {{ color }}
+              </UBadge>
+              <span
+                v-if="!shower.preferences.favoriteColors?.length"
+                class="text-sm text-gray-400"
+                >Nenhuma</span
+              >
             </dd>
           </div>
           <div v-if="shower.preferences.allowedModels" class="md:col-span-2">
             <dt class="text-sm font-medium text-gray-500">
               Modelos Permitidos
             </dt>
-            <dd class="mt-1 text-sm text-gray-900">
-              {{ shower.preferences.allowedModels }}
+            <dd class="mt-1 flex flex-wrap gap-1">
+              <UBadge
+                v-for="model in shower.preferences.allowedModels"
+                :key="model"
+                color="primary"
+                variant="soft"
+              >
+                {{ model }}
+              </UBadge>
             </dd>
           </div>
+          <div v-if="shower.preferences.measurements" class="md:col-span-2">
+            <dt class="text-sm font-medium text-gray-500">Medidas</dt>
+            <dd
+              class="mt-1 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-900"
+            >
+              <div>
+                <span class="text-gray-500">Busto:</span>
+                {{ shower.preferences.measurements.bust }} cm
+              </div>
+              <div>
+                <span class="text-gray-500">Abaixo do Busto:</span>
+                {{ shower.preferences.measurements.underBust }} cm
+              </div>
+              <div>
+                <span class="text-gray-500">Cintura:</span>
+                {{ shower.preferences.measurements.waist }} cm
+              </div>
+              <div>
+                <span class="text-gray-500">Quadril:</span>
+                {{ shower.preferences.measurements.hip }} cm
+              </div>
+            </dd>
+          </div>
+
           <div v-if="shower.preferences.notAllowedModels" class="md:col-span-2">
             <dt class="text-sm font-medium text-gray-500">
               Modelos Não Permitidos
@@ -224,6 +282,31 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 
 const { formatDate } = useDate();
+
+const getColorHex = (colorName: string): string => {
+  const colorMap: Record<string, string> = {
+    Branco: "#FFFFFF",
+    Preto: "#000000",
+    Vermelho: "#DC2626",
+    Rosa: "#EC4899",
+    "Rosê (Rosa Claro)": "#FBCFE8",
+    Pink: "#EC4899",
+    Roxo: "#9333EA",
+    Lilás: "#C084FC",
+    Azul: "#3B82F6",
+    Verde: "#10B981",
+    Amarelo: "#EAB308",
+    Laranja: "#F97316",
+    Marrom: "#92400E",
+    Nude: "#F5E6D3",
+    Marsala: "#6D2B2B",
+    Rubi: "#9B1C1C",
+    Bege: "#D4B896",
+    Cinza: "#9CA3AF",
+    Terracota: "#C2714F",
+  };
+  return colorMap[colorName] || "#E5E7EB";
+};
 
 const loadShower = async () => {
   try {

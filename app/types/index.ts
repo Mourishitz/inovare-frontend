@@ -52,7 +52,7 @@ export interface Shower {
 
 export interface ShowerPreferences {
   ID?: number
-  style: string
+  style: string[]
   budget?: number
   guestCount?: number
   specialRequests?: string
@@ -64,6 +64,12 @@ export interface ShowerPreferences {
   size?: string
   allowedModels?: string[]
   notAllowedModels?: string
+  measurements?: {
+    bust: number
+    underBust: number
+    waist: number
+    hip: number
+  } | null
 }
 
 export enum ShowerStatus {

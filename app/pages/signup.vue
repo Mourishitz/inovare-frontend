@@ -256,19 +256,29 @@
                 name="style"
                 :error="errors.style || undefined"
               >
-                <URadioGroup
-                  v-model="step3Data.style"
-                  :items="[
-                    { value: 1, label: 'Romântico' },
-                    { value: 2, label: 'Sensual' },
-                    { value: 3, label: 'Elegante' },
-                    { value: 4, label: 'Divertido' },
-                    { value: 5, label: 'Clássico' },
-                    { value: 6, label: 'Moderno' },
-                  ]"
-                  :disabled="loading"
-                  :ui="{ fieldset: 'grid grid-cols-3 gap-2 p-4' }"
-                />
+                <div class="grid grid-cols-3 gap-2 p-4">
+                  <UCheckbox
+                    v-for="style in [
+                      { value: 1, label: 'Romântico' },
+                      { value: 2, label: 'Sensual' },
+                      { value: 3, label: 'Elegante' },
+                    ]"
+                    :key="style.value"
+                    :model-value="step3Data.style.includes(style.value)"
+                    @update:model-value="
+                      (checked) => {
+                        if (checked) {
+                          step3Data.style.push(style.value);
+                        } else {
+                          const index = step3Data.style.indexOf(style.value);
+                          if (index > -1) step3Data.style.splice(index, 1);
+                        }
+                      }
+                    "
+                    :label="style.label"
+                    :disabled="loading"
+                  />
+                </div>
               </UFormField>
 
               <UFormField
@@ -391,6 +401,59 @@
               </UFormField>
 
               <UFormField
+                label="Medidas (cm)"
+                name="measurements"
+                :error="errors.measurements || undefined"
+              >
+                <div class="grid grid-cols-2 gap-4 p-4">
+                  <UFormField label="Busto" name="bust" :error="errors['measurements.bust'] || undefined">
+                    <UInput
+                      v-model.number="step3Data.measurements.bust"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      placeholder="Ex: 85.5"
+                      :disabled="loading"
+                      size="xl"
+                    />
+                  </UFormField>
+                  <UFormField label="Abaixo do Busto" name="underBust" :error="errors['measurements.underBust'] || undefined">
+                    <UInput
+                      v-model.number="step3Data.measurements.underBust"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      placeholder="Ex: 72.0"
+                      :disabled="loading"
+                      size="xl"
+                    />
+                  </UFormField>
+                  <UFormField label="Cintura" name="waist" :error="errors['measurements.waist'] || undefined">
+                    <UInput
+                      v-model.number="step3Data.measurements.waist"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      placeholder="Ex: 65.0"
+                      :disabled="loading"
+                      size="xl"
+                    />
+                  </UFormField>
+                  <UFormField label="Quadril" name="hip" :error="errors['measurements.hip'] || undefined">
+                    <UInput
+                      v-model.number="step3Data.measurements.hip"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      placeholder="Ex: 90.0"
+                      :disabled="loading"
+                      size="xl"
+                    />
+                  </UFormField>
+                </div>
+              </UFormField>
+
+              <UFormField
                 label="Modelos Permitidos"
                 name="allowedModels"
                 :error="errors.allowedModels || undefined"
@@ -432,9 +495,10 @@
                 :error="errors.notAllowedModels || undefined"
               >
                 <UInput
+                  class="w-full"
                   v-model="step3Data.notAllowedModels"
                   type="text"
-                  placeholder="Ex: Model C"
+                  placeholder="Aquelas peças que você não usaria de jeito nenhum 😵‍💫"
                   :disabled="loading"
                   size="xl"
                 />
@@ -446,8 +510,9 @@
                 :error="errors.notes || undefined"
               >
                 <UTextarea
+                  class="w-full"
                   v-model="step3Data.notes"
-                  placeholder="Observações adicionais..."
+                  placeholder="Alguma observação que gostaria de deixar em relação as peças?"
                   :disabled="loading"
                   :rows="4"
                   size="xl"
@@ -627,7 +692,7 @@ const step2Data = reactive({
 
 // Step 3 data
 const step3Data = reactive({
-  style: null as number | null,
+  style: [] as number[],
   favoriteColors: [] as number[],
   preferredBra: null as number | null,
   preferredModel: null as number | null,
@@ -636,6 +701,12 @@ const step3Data = reactive({
   allowedModels: [] as number[],
   notAllowedModels: "",
   notes: "",
+  measurements: {
+    bust: null as number | null,
+    underBust: null as number | null,
+    waist: null as number | null,
+    hip: null as number | null,
+  },
 });
 
 // Step 4 data
@@ -702,6 +773,11 @@ const errors = reactive({
   allowedModels: "",
   notAllowedModels: "",
   notes: "",
+  measurements: "",
+  "measurements.bust": "",
+  "measurements.underBust": "",
+  "measurements.waist": "",
+  "measurements.hip": "",
   packaging: "",
 });
 
@@ -884,11 +960,15 @@ const validateStep3 = (): boolean => {
   errors.allowedModels = "";
   errors.notAllowedModels = "";
   errors.notes = "";
+  errors["measurements.bust"] = "";
+  errors["measurements.underBust"] = "";
+  errors["measurements.waist"] = "";
+  errors["measurements.hip"] = "";
   generalError.value = "";
 
   // Validate required fields
-  if (!step3Data.style) {
-    errors.style = "Estilo é obrigatório";
+  if (step3Data.style.length === 0) {
+    errors.style = "Selecione pelo menos um estilo";
     isValid = false;
   }
 
@@ -914,6 +994,28 @@ const validateStep3 = (): boolean => {
 
   if (!step3Data.size) {
     errors.size = "Tamanho é obrigatório";
+    isValid = false;
+  }
+
+  errors["measurements.bust"] = "";
+  errors["measurements.underBust"] = "";
+  errors["measurements.waist"] = "";
+  errors["measurements.hip"] = "";
+
+  if (!step3Data.measurements.bust || step3Data.measurements.bust <= 0) {
+    errors["measurements.bust"] = "Busto é obrigatório e deve ser maior que 0";
+    isValid = false;
+  }
+  if (!step3Data.measurements.underBust || step3Data.measurements.underBust <= 0) {
+    errors["measurements.underBust"] = "Abaixo do busto é obrigatório e deve ser maior que 0";
+    isValid = false;
+  }
+  if (!step3Data.measurements.waist || step3Data.measurements.waist <= 0) {
+    errors["measurements.waist"] = "Cintura é obrigatória e deve ser maior que 0";
+    isValid = false;
+  }
+  if (!step3Data.measurements.hip || step3Data.measurements.hip <= 0) {
+    errors["measurements.hip"] = "Quadril é obrigatório e deve ser maior que 0";
     isValid = false;
   }
 
@@ -1113,6 +1215,12 @@ const handleStep3 = async () => {
       allowedModels: step3Data.allowedModels,
       notAllowedModels: step3Data.notAllowedModels.trim(),
       notes: step3Data.notes.trim(),
+      measurements: {
+        bust: step3Data.measurements.bust,
+        underBust: step3Data.measurements.underBust,
+        waist: step3Data.measurements.waist,
+        hip: step3Data.measurements.hip,
+      },
     };
 
     console.log(preferencesData);

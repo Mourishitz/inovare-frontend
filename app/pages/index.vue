@@ -110,9 +110,17 @@
               <div class="space-y-2 text-sm">
                 <div class="flex items-start gap-2">
                   <span class="text-gray-500 min-w-[120px]">Estilo:</span>
-                  <span class="font-medium">{{
-                    shower.preferences.style
-                  }}</span>
+                  <div class="flex flex-wrap gap-1">
+                    <UBadge
+                      v-for="style in shower.preferences.style"
+                      :key="style"
+                      color="primary"
+                      variant="soft"
+                      size="md"
+                    >
+                      {{ style }}
+                    </UBadge>
+                  </div>
                 </div>
                 <div class="flex items-start gap-2">
                   <span class="text-gray-500 min-w-[120px]">Tamanho:</span>
@@ -135,6 +143,30 @@
                   <span class="font-medium">{{
                     shower.preferences.preferredPanties
                   }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="shower.preferences?.measurements">
+              <h5 class="text-sm font-semibold text-gray-700 mb-2">
+                Medidas
+              </h5>
+              <div class="space-y-1 text-sm">
+                <div class="flex items-center gap-2">
+                  <span class="text-gray-500">Busto:</span>
+                  <span class="font-medium">{{ shower.preferences.measurements.bust }} cm</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-gray-500">Abaixo do Busto:</span>
+                  <span class="font-medium">{{ shower.preferences.measurements.underBust }} cm</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-gray-500">Cintura:</span>
+                  <span class="font-medium">{{ shower.preferences.measurements.waist }} cm</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-gray-500">Quadril:</span>
+                  <span class="font-medium">{{ shower.preferences.measurements.hip }} cm</span>
                 </div>
               </div>
             </div>
@@ -162,7 +194,7 @@
               <h5 class="text-sm font-semibold text-gray-700 mb-2">
                 Modelos Permitidos
               </h5>
-              <div class="flex flex-wrap gap-1 justify-center">
+              <div class="flex flex-wrap gap-1 justify-start">
                 <UBadge
                   v-for="model in shower.preferences.allowedModels"
                   :key="model"
@@ -241,7 +273,7 @@ interface ShowerResponse {
     package: string;
   } | null;
   preferences: {
-    style: string;
+    style: string[];
     favoriteColors: string[];
     preferredBra: string;
     preferredModel: string;
@@ -250,6 +282,12 @@ interface ShowerResponse {
     allowedModels: string[];
     notAllowedModels?: string;
     notes?: string;
+    measurements?: {
+      bust: number;
+      underBust: number;
+      waist: number;
+      hip: number;
+    } | null;
   } | null;
 }
 

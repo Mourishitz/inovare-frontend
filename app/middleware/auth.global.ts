@@ -16,8 +16,8 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     return navigateTo('/', { replace: true })
   }
   
-  // Skip check for login and signup pages
-  if (to.path === '/login' || to.path === '/signup') {
+  // Skip check for login, signup, and public catalog URL pages
+  if (to.path === '/login' || to.path === '/signup' || to.name === 'slug') {
     return
   }
 

@@ -112,7 +112,15 @@
                   class="border-b border-gray-100 hover:bg-gray-50"
                 >
                   <td class="py-3 px-4 text-sm font-medium text-gray-900">
-                    {{ product.name }}
+                    <div class="flex items-center gap-2">
+                      {{ product.name }}
+                      <UBadge
+                        v-if="product.is_exclusive"
+                        color="info"
+                        variant="outline"
+                        >Exclusivo</UBadge
+                      >
+                    </div>
                   </td>
                   <td class="py-3 px-4 text-sm text-gray-600">
                     {{ product.description }}
@@ -206,7 +214,11 @@
   </div>
 
   <!-- Edit Product Modal -->
-  <UModal v-model:open="editModalOpen" title="Editar Produto" :close="{ color: 'primary', variant: 'outline', class: 'rounded-full' }">
+  <UModal
+    v-model:open="editModalOpen"
+    title="Editar Produto"
+    :close="{ color: 'primary', variant: 'outline', class: 'rounded-full' }"
+  >
     <template #body>
       <UForm :state="editProduct" @submit="handleEditProduct" class="space-y-5">
         <UFormField label="Nome" name="name" required>
@@ -270,8 +282,8 @@
     <template #body>
       <p class="text-gray-700">
         Tem certeza que deseja excluir o produto
-        <span class="font-semibold">{{ productToDelete?.name }}</span>?
-        Essa ação não pode ser desfeita.
+        <span class="font-semibold">{{ productToDelete?.name }}</span
+        >? Essa ação não pode ser desfeita.
       </p>
     </template>
     <template #footer>
@@ -306,6 +318,7 @@ interface Product {
   name: string;
   description: string;
   is_exclusive: boolean;
+  shower_id?: number;
 }
 
 interface ProductsResponse {
@@ -335,16 +348,22 @@ const selectedFile = ref<File | null>(null);
 
 const editing = ref(false);
 const editModalOpen = ref(false);
+const editLoadingCatalog = ref(false);
 const editSelectedFile = ref<File | null>(null);
 const editProduct = reactive({
   id: 0,
   name: "",
   description: "",
   image_url: "",
+  is_exclusive: false,
+  catalog_id: null as number | null,
+  shower_id: null as number | null,
 });
 
-const editPreviewUrl = computed(() =>
-  editProduct.image_url || (editProduct.id ? productImages.value[editProduct.id] : ""),
+const editPreviewUrl = computed(
+  () =>
+    editProduct.image_url ||
+    (editProduct.id ? productImages.value[editProduct.id] : ""),
 );
 
 const newProduct = reactive({
@@ -463,13 +482,42 @@ const openDeleteModal = (product: Product) => {
   deleteModalOpen.value = true;
 };
 
-const openEditModal = (product: Product) => {
+const openEditModal = async (product: Product) => {
   editProduct.id = product.id;
   editProduct.name = product.name;
   editProduct.description = product.description;
+  editProduct.is_exclusive = product.is_exclusive;
   editProduct.image_url = "";
+  editProduct.catalog_id = null;
+  editProduct.shower_id = null;
   editSelectedFile.value = null;
   editModalOpen.value = true;
+
+  if (product.is_exclusive) {
+    editLoadingCatalog.value = true;
+    try {
+      const details = await apiCall<{
+        catalog_id?: number | null;
+        CatalogID?: number | null;
+      }>(`/api/products/${product.id}`);
+      const catalogId = details.catalog_id ?? details.CatalogID ?? null;
+      editProduct.catalog_id = catalogId;
+
+      if (catalogId) {
+        const catalog = await apiCall<{
+          shower_id?: number;
+          ShowerID?: number;
+          showerId?: number;
+        }>(`/api/catalogs/${catalogId}`);
+        editProduct.shower_id =
+          catalog.shower_id ?? catalog.ShowerID ?? catalog.showerId ?? null;
+      }
+    } catch (err) {
+      console.error("Error fetching exclusive product details:", err);
+    } finally {
+      editLoadingCatalog.value = false;
+    }
+  }
 };
 
 const handleEditProduct = async () => {

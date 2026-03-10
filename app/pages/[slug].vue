@@ -6,20 +6,9 @@
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-4xl font-bold text-gray-900 mb-2">
-              {{ catalog?.name || "Catálogo de Lingerie" }}
+              {{ hostUsername ? `Chá de ${hostUsername}` : "Catálogo de Lingerie" }}
             </h1>
-            <p class="text-lg text-gray-600">
-              Seu catálogo personalizado de lingerie está pronto para revisão
-            </p>
           </div>
-          <UBadge
-            v-if="catalog"
-            :color="getStatusColor(catalog.status)"
-            size="lg"
-            class="text-base px-4 py-2"
-          >
-            {{ getStatusLabel(catalog.status) }}
-          </UBadge>
         </div>
       </div>
     </div>
@@ -50,7 +39,7 @@
             Erro ao carregar catálogo
           </h3>
           <p class="text-red-500 mb-6">{{ error }}</p>
-          <UButton to="/" size="lg"> Voltar para Início </UButton>
+          <UButton to="/" size="lg">Voltar para Início</UButton>
         </div>
       </UCard>
     </div>
@@ -132,7 +121,6 @@
               :key="product.id"
               class="overflow-hidden hover:shadow-lg transition-shadow duration-300"
             >
-              <!-- Product Image -->
               <div
                 class="relative aspect-square bg-gradient-to-br from-pink-100 to-purple-100 rounded-lg overflow-hidden mb-4"
               >
@@ -152,7 +140,6 @@
                   />
                 </div>
 
-                <!-- Stock Badge -->
                 <div class="absolute top-2 right-2">
                   <UBadge
                     :color="product.inStock ? 'green' : 'red'"
@@ -163,7 +150,6 @@
                 </div>
               </div>
 
-              <!-- Product Info -->
               <div class="space-y-2">
                 <h3 class="font-semibold text-lg text-gray-900 line-clamp-1">
                   {{ product.name }}
@@ -217,7 +203,7 @@
               >
                 <div
                   v-for="comment in comments"
-                  :key="comment.id"
+                  :key="comment.ID"
                   class="flex gap-3"
                 >
                   <div
@@ -323,44 +309,14 @@
             </div>
           </UCard>
         </div>
-
-        <!-- Approved State -->
-        <div v-else-if="catalog.status === 'approved'" class="mt-12">
-          <UCard class="bg-green-50 border-2 border-green-200">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-4">
-                <div
-                  class="h-16 w-16 rounded-full bg-green-200 flex items-center justify-center"
-                >
-                  <Icon
-                    name="i-heroicons-check-circle"
-                    class="h-10 w-10 text-green-700"
-                  />
-                </div>
-                <div>
-                  <h3 class="text-2xl font-bold text-green-900 mb-1">
-                    Catálogo Aprovado!
-                  </h3>
-                  <p class="text-green-700">
-                    Seu catálogo foi aprovado e pode ser compartilhado com seus
-                    convidados! <br />
-                  </p>
-                </div>
-              </div>
-              <UButton to="/" size="lg" color="green">
-                Voltar para Início
-              </UButton>
-            </div>
-          </UCard>
-        </div>
       </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Catalog } from "~/types";
 import { CatalogStatus } from "~/types";
+import type { Catalog } from "~/types";
 
 interface CatalogComment {
   ID: number;
@@ -379,26 +335,6 @@ interface CatalogComment {
   DeletedAt: string | null;
 }
 
-definePageMeta({
-  layout: "authenticated",
-});
-
-const route = useRoute();
-const router = useRouter();
-const showerId = route.params.id;
-const { apiCall } = useApi();
-
-const catalog = ref<Catalog | null>(null);
-
-const review = reactive({
-  comments: "",
-});
-
-const loading = ref(false);
-const error = ref("");
-const fetchLoading = ref(true);
-
-// Backend response interface
 interface BackendCatalogResponse {
   catalog: {
     ID: number;
@@ -407,6 +343,9 @@ interface BackendCatalogResponse {
     package: string;
     CreatedAt: string;
     UpdatedAt: string;
+  };
+  host?: {
+    username: string;
   };
   products: Array<{
     ID: number;
@@ -421,22 +360,38 @@ interface BackendCatalogResponse {
   }>;
 }
 
-// Computed properties
-const availableCount = computed(
-  () => catalog.value?.products.filter((p) => p.inStock).length || 0,
-);
+definePageMeta({
+  layout: "authenticated",
+});
 
-const totalValue = computed(
-  () => catalog.value?.products.reduce((sum, p) => sum + p.price, 0) || 0,
-);
+const route = useRoute();
+const router = useRouter();
+const { apiCall } = useApi();
 
-// Comments state
+const slug = computed(() => {
+  const raw = route.params.slug as string;
+  // Extract just the slug portion in case a full URL is somehow passed
+  return raw.split("/").pop() || raw;
+});
+
+const catalog = ref<Catalog | null>(null);
+const hostUsername = ref<string | null>(null);
+const review = reactive({ comments: "" });
+
+const loading = ref(false);
+const error = ref("");
+const fetchLoading = ref(true);
+
 const comments = ref<CatalogComment[]>([]);
 const commentsLoading = ref(false);
 const commentLoading = ref(false);
 const commentError = ref<string | null>(null);
 
 const { formatDateTime: formatCommentDate } = useDate();
+
+const availableCount = computed(
+  () => catalog.value?.products.filter((p) => p.inStock).length || 0,
+);
 
 const fetchComments = async (catalogId: string) => {
   commentsLoading.value = true;
@@ -458,10 +413,7 @@ const submitComment = async () => {
   try {
     const created = await apiCall<CatalogComment>(
       `/api/catalogs/${catalog.value.id}/comments`,
-      {
-        method: "POST",
-        body: { content: review.comments.trim() },
-      },
+      { method: "POST", body: { content: review.comments.trim() } },
     );
     comments.value.push(created);
     review.comments = "";
@@ -473,74 +425,12 @@ const submitComment = async () => {
   }
 };
 
-// Fetch catalog on mount
-onMounted(async () => {
-  try {
-    const response = await apiCall<BackendCatalogResponse>(
-      `/api/showers/${showerId}/catalog`,
-    );
-
-    const catalogId = response.catalog.ID.toString();
-
-    // Transform backend response to frontend format
-    catalog.value = {
-      id: catalogId,
-      showerId: showerId as string,
-      name: `Catálogo - ${response.catalog.package}`,
-      status: response.catalog.approved
-        ? CatalogStatus.APPROVED
-        : CatalogStatus.READY_FOR_REVIEW,
-      products: response.products.map((item) => ({
-        id: item.product.ID.toString(),
-        name: item.product.name,
-        description: item.product.description,
-        price: item.price,
-        imageUrl: item.product.image_url,
-        category: "",
-        inStock: !item.is_bought,
-      })),
-      createdAt: response.catalog.CreatedAt,
-      updatedAt: response.catalog.UpdatedAt,
-    };
-
-    await fetchComments(catalogId);
-  } catch (err) {
-    const apiError = err as { data?: { error?: string } };
-    error.value = apiError.data?.error || "Erro ao carregar catálogo";
-    console.error("Error fetching catalog:", err);
-  } finally {
-    fetchLoading.value = false;
-  }
-});
-
-const getStatusColor = (status?: CatalogStatus) => {
-  if (!status) return "gray";
-  const colors = {
-    draft: "gray",
-    ready_for_review: "blue",
-    approved: "green",
-    changes_requested: "yellow",
-  };
-  return colors[status] || "gray";
-};
-
-const getStatusLabel = (status?: CatalogStatus) => {
-  if (!status) return "N/A";
-  const labels = {
-    draft: "Rascunho",
-    ready_for_review: "Pronto para Revisão",
-    approved: "Aprovado",
-    changes_requested: "Alterações Solicitadas",
-  };
-  return labels[status] || status;
-};
-
 const handleApprove = async () => {
+  if (!catalog.value) return;
   loading.value = true;
   error.value = "";
-
   try {
-    await apiCall(`/api/showers/${showerId}/catalog/approve`, {
+    await apiCall(`/api/catalogs/${catalog.value.id}/approve`, {
       method: "POST",
       body: JSON.stringify({
         approved: true,
@@ -557,25 +447,67 @@ const handleApprove = async () => {
   }
 };
 
-const handleReview = async () => {
-  loading.value = true;
-  error.value = "";
-
+onMounted(async () => {
   try {
-    await apiCall(`/api/showers/${showerId}/catalog/approve`, {
-      method: "POST",
-      body: JSON.stringify({
-        approved: false,
-        comments: review.comments,
-      }),
-    });
-    router.push("/");
+    const response = await apiCall<BackendCatalogResponse>(
+      `/api/catalogs/url/${slug.value}`,
+    );
+
+    const catalogId = response.catalog.ID.toString();
+
+    hostUsername.value = response.host?.username ?? null;
+
+    catalog.value = {
+      id: catalogId,
+      name: `Catálogo - ${response.catalog.package}`,
+      status: response.catalog.approved
+        ? CatalogStatus.APPROVED
+        : CatalogStatus.READY_FOR_REVIEW,
+      products: response.products.map((item) => ({
+        id: item.product.ID.toString(),
+        name: item.product.name,
+        description: item.product.description,
+        price: item.price,
+        imageUrl: item.product.image_url,
+        category: "",
+        inStock: !item.is_bought,
+      })),
+      approved: response.catalog.approved,
+      url: response.catalog.url,
+      package: response.catalog.package,
+      createdAt: response.catalog.CreatedAt,
+      updatedAt: response.catalog.UpdatedAt,
+    };
+
+    await fetchComments(catalogId);
   } catch (err) {
     const apiError = err as { data?: { error?: string } };
-    error.value = apiError.data?.error || "Erro ao enviar comentários.";
-    console.error("Error requesting changes:", err);
+    error.value = apiError.data?.error || "Erro ao carregar catálogo";
+    console.error("Error fetching catalog by URL:", err);
   } finally {
-    loading.value = false;
+    fetchLoading.value = false;
   }
+});
+
+const getStatusColor = (status?: CatalogStatus) => {
+  if (!status) return "gray";
+  const colors: Record<string, string> = {
+    draft: "gray",
+    ready_for_review: "blue",
+    approved: "green",
+    changes_requested: "yellow",
+  };
+  return colors[status] || "gray";
+};
+
+const getStatusLabel = (status?: CatalogStatus) => {
+  if (!status) return "N/A";
+  const labels: Record<string, string> = {
+    draft: "Rascunho",
+    ready_for_review: "Pronto para Revisão",
+    approved: "Aprovado",
+    changes_requested: "Alterações Solicitadas",
+  };
+  return labels[status] || status;
 };
 </script>
