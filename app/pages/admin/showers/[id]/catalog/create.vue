@@ -35,22 +35,37 @@
           class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
         >
           <UCard v-for="product in selectedProducts" :key="product.id">
-            <div class="space-y-2">
-              <div class="flex justify-between items-start">
-                <h3 class="font-semibold">{{ product.name }}</h3>
-                <UButton
-                  @click="openRemoveModal(product)"
-                  icon="i-heroicons-x-mark"
-                  size="xs"
-                  color="red"
-                  variant="ghost"
-                  class="cursor-pointer"
+            <div class="flex gap-4">
+              <button
+                v-if="product.imageUrl"
+                type="button"
+                class="w-24 h-24 shrink-0 cursor-zoom-in self-start"
+                @click="openImagePreview(product.name, product.imageUrl)"
+              >
+                <img
+                  :src="product.imageUrl"
+                  :alt="product.name"
+                  class="w-full h-full object-contain rounded transition hover:scale-[1.02]"
                 />
+              </button>
+
+              <div class="min-w-0 flex-1 space-y-2">
+                <div class="flex justify-between items-start gap-2">
+                  <h3 class="font-semibold">{{ product.name }}</h3>
+                  <UButton
+                    @click="openRemoveModal(product)"
+                    icon="i-heroicons-x-mark"
+                    size="xs"
+                    color="red"
+                    variant="ghost"
+                    class="cursor-pointer"
+                  />
+                </div>
+                <p class="text-sm text-gray-600">{{ product.description }}</p>
+                <p class="text-lg font-bold text-primary-600">
+                  R$ {{ (product.price / 100).toFixed(2).replace(".", ",") }}
+                </p>
               </div>
-              <p class="text-sm text-gray-600">{{ product.description }}</p>
-              <p class="text-lg font-bold text-primary-600">
-                R$ {{ (product.price / 100).toFixed(2).replace(".", ",") }}
-              </p>
             </div>
           </UCard>
         </div>
@@ -87,12 +102,18 @@
             :key="product.id"
           >
             <div class="space-y-2">
-              <img
+              <button
                 v-if="product.image_url"
-                :src="product.image_url"
-                :alt="product.name"
-                class="w-full h-32 object-contain rounded"
-              />
+                type="button"
+                class="block w-full cursor-zoom-in"
+                @click="openImagePreview(product.name, product.image_url)"
+              >
+                <img
+                  :src="product.image_url"
+                  :alt="product.name"
+                  class="w-full h-32 object-contain rounded transition hover:scale-[1.02]"
+                />
+              </button>
               <h3 class="font-semibold">{{ product.name }}</h3>
               <p class="text-sm text-gray-600">{{ product.description }}</p>
               <div class="flex justify-between items-center">
@@ -356,6 +377,52 @@
         </UCard>
       </template>
     </UModal>
+
+    <UModal v-model:open="isImagePreviewOpen">
+      <template #content>
+        <UCard v-if="previewImageUrl" class="w-full max-w-3xl">
+          <template #header>
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="text-lg font-semibold">{{ previewImageName }}</h3>
+                <p class="text-sm text-gray-500">
+                  Use o scroll do mouse para aproximar ou afastar a imagem e
+                  arraste para navegar
+                </p>
+              </div>
+
+              <UButton
+                variant="soft"
+                size="sm"
+                icon="i-heroicons-arrow-path"
+                @click="resetImageZoom"
+              >
+                {{ previewZoomLabel }}
+              </UButton>
+            </div>
+          </template>
+
+          <div
+            ref="previewContainer"
+            class="max-h-[70vh] overflow-auto rounded bg-gray-50 p-4"
+            :class="previewContainerCursor"
+            @wheel.prevent="handlePreviewWheel"
+            @mousedown="startPreviewDrag"
+            @mousemove="handlePreviewDrag"
+            @mouseup="stopPreviewDrag"
+            @mouseleave="stopPreviewDrag"
+          >
+            <img
+              :src="previewImageUrl"
+              :alt="previewImageName"
+              class="mx-auto h-auto rounded object-contain select-none"
+              :style="previewImageStyle"
+              draggable="false"
+            />
+          </div>
+        </UCard>
+      </template>
+    </UModal>
   </div>
 </template>
 
@@ -534,6 +601,88 @@ const createProductError = ref<string | null>(null);
 const newProduct = reactive({ name: "", description: "", image_url: "" });
 const newProductPrice = ref(0);
 const newProductPriceDisplay = ref("0,00");
+const isImagePreviewOpen = ref(false);
+const previewImageName = ref("");
+const previewImageUrl = ref("");
+const previewContainer = ref<HTMLDivElement | null>(null);
+const previewZoom = ref(1);
+const isPreviewDragging = ref(false);
+const previewDragState = reactive({
+  startX: 0,
+  startY: 0,
+  scrollLeft: 0,
+  scrollTop: 0,
+});
+const PREVIEW_ZOOM_MIN = 1;
+const PREVIEW_ZOOM_MAX = 4;
+const PREVIEW_ZOOM_STEP = 0.25;
+
+const previewImageStyle = computed(() => ({
+  width: `${previewZoom.value * 100}%`,
+  maxWidth: "none",
+}));
+
+const previewZoomLabel = computed(
+  () => `${Math.round(previewZoom.value * 100)}%`,
+);
+
+const previewContainerCursor = computed(() => {
+  if (previewZoom.value <= PREVIEW_ZOOM_MIN) return "cursor-zoom-in";
+  return isPreviewDragging.value ? "cursor-grabbing" : "cursor-grab";
+});
+
+const resetImageZoom = () => {
+  previewZoom.value = PREVIEW_ZOOM_MIN;
+  if (previewContainer.value) {
+    previewContainer.value.scrollLeft = 0;
+    previewContainer.value.scrollTop = 0;
+  }
+  isPreviewDragging.value = false;
+};
+
+const handlePreviewWheel = (event: WheelEvent) => {
+  const direction = event.deltaY < 0 ? 1 : -1;
+  const nextZoom = previewZoom.value + direction * PREVIEW_ZOOM_STEP;
+  previewZoom.value = Math.min(
+    PREVIEW_ZOOM_MAX,
+    Math.max(PREVIEW_ZOOM_MIN, Number(nextZoom.toFixed(2))),
+  );
+};
+
+const startPreviewDrag = (event: MouseEvent) => {
+  if (!previewContainer.value || previewZoom.value <= PREVIEW_ZOOM_MIN) return;
+  isPreviewDragging.value = true;
+  previewDragState.startX = event.clientX;
+  previewDragState.startY = event.clientY;
+  previewDragState.scrollLeft = previewContainer.value.scrollLeft;
+  previewDragState.scrollTop = previewContainer.value.scrollTop;
+};
+
+const handlePreviewDrag = (event: MouseEvent) => {
+  if (!previewContainer.value || !isPreviewDragging.value) return;
+  event.preventDefault();
+  const deltaX = event.clientX - previewDragState.startX;
+  const deltaY = event.clientY - previewDragState.startY;
+  previewContainer.value.scrollLeft = previewDragState.scrollLeft - deltaX;
+  previewContainer.value.scrollTop = previewDragState.scrollTop - deltaY;
+};
+
+const stopPreviewDrag = () => {
+  isPreviewDragging.value = false;
+};
+
+const openImagePreview = (name: string, imageUrl: string) => {
+  previewImageName.value = name;
+  previewImageUrl.value = imageUrl;
+  resetImageZoom();
+  isImagePreviewOpen.value = true;
+};
+
+watch(isImagePreviewOpen, (isOpen) => {
+  if (!isOpen) {
+    resetImageZoom();
+  }
+});
 
 const openCreateProductModal = () => {
   newProduct.name = "";

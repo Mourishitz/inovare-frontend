@@ -181,9 +181,7 @@
                   :key="color"
                   variant="outline"
                   color="neutral"
-                  :style="{
-                    color: getColorHex(color),
-                  }"
+                  :style="getColorStyle(color)"
                 >
                   {{ color }}
                 </UBadge>
@@ -317,6 +315,18 @@ const getColorHex = (colorName: string): string => {
     Nude: "#F5E6D3",
   };
   return colorMap[colorName] || "#E5E7EB";
+};
+
+const isLightColor = (hex: string): boolean => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 180;
+};
+
+const getColorStyle = (colorName: string) => {
+  const hex = getColorHex(colorName);
+  return { borderColor: hex, color: isLightColor(hex) ? "#374151" : hex };
 };
 
 const goToSignupStep2 = () => {
