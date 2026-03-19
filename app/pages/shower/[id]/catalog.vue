@@ -3,7 +3,16 @@
     <!-- Header Section -->
     <div class="bg-white border-b border-gray-200 mb-8">
       <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
-        <div class="flex items-center justify-between">
+        <UButton
+          variant="ghost"
+          icon="i-heroicons-arrow-left"
+          class="mb-4"
+          @click="handleBack"
+        >
+          Voltar
+        </UButton>
+
+        <div class="flex items-center justify-between gap-4">
           <div>
             <h1 class="text-4xl font-bold text-gray-900 mb-2">
               {{ catalog?.name || "Catálogo de Lingerie" }}
@@ -247,7 +256,7 @@
                 <UFormGroup
                   label="Comentários ou Sugestões"
                   name="comments"
-                  help="Obrigatório: Adicione um comentário antes de aprovar ou solicitar alterações"
+                  help="Opcional para aprovar. Para solicitar alterações, adicione um comentário explicando o ajuste desejado."
                 >
                   <UTextarea
                     v-model="review.comments"
@@ -280,7 +289,6 @@
                     <UButton
                       type="button"
                       :loading="loading"
-                      :disabled="!review.comments.trim()"
                       color="green"
                       size="lg"
                       class="flex-1 border border-green-600 bg-green-100 text-green-900 max-w-xs hover:bg-green-600 hover:text-white transition-colors duration-300 cursor-pointer"
@@ -387,6 +395,15 @@ const route = useRoute();
 const router = useRouter();
 const showerId = route.params.id;
 const { apiCall } = useApi();
+
+const handleBack = async () => {
+  if (import.meta.client && window.history.length > 1) {
+    router.back();
+    return;
+  }
+
+  await navigateTo("/");
+};
 
 const catalog = ref<Catalog | null>(null);
 
@@ -536,16 +553,14 @@ const getStatusLabel = (status?: CatalogStatus) => {
 };
 
 const handleApprove = async () => {
+  if (!catalog.value) return;
+
   loading.value = true;
   error.value = "";
 
   try {
-    await apiCall(`/api/showers/${showerId}/catalog/approve`, {
-      method: "POST",
-      body: JSON.stringify({
-        approved: true,
-        comments: review.comments || "",
-      }),
+    await apiCall(`/api/catalogs/${catalog.value.id}/approve`, {
+      method: "PATCH",
     });
     router.push("/");
   } catch (err) {

@@ -40,7 +40,7 @@
                 v-if="product.imageUrl"
                 type="button"
                 class="w-24 h-24 shrink-0 cursor-zoom-in self-start"
-                @click="openImagePreview(product.name, product.imageUrl)"
+                @click="openSelectedImagePreview(product)"
               >
                 <img
                   :src="product.imageUrl"
@@ -106,7 +106,7 @@
                 v-if="product.image_url"
                 type="button"
                 class="block w-full cursor-zoom-in"
-                @click="openImagePreview(product.name, product.image_url)"
+                @click="openSearchImagePreview(product)"
               >
                 <img
                   :src="product.image_url"
@@ -157,7 +157,10 @@
       <UCard v-if="catalogId">
         <template #header>
           <div class="flex items-center gap-3">
-            <Icon name="i-heroicons-chat-bubble-left-ellipsis" class="h-5 w-5 text-gray-500" />
+            <Icon
+              name="i-heroicons-chat-bubble-left-ellipsis"
+              class="h-5 w-5 text-gray-500"
+            />
             <h2 class="text-xl font-semibold">Comentários da Noiva</h2>
           </div>
         </template>
@@ -166,21 +169,32 @@
           Carregando comentários...
         </div>
 
-        <div v-else-if="comments.length === 0" class="text-center py-6 text-gray-400">
+        <div
+          v-else-if="comments.length === 0"
+          class="text-center py-6 text-gray-400"
+        >
           Nenhum comentário ainda.
         </div>
 
         <div v-else class="space-y-3 max-h-80 overflow-y-auto pr-1">
           <div v-for="comment in comments" :key="comment.ID" class="flex gap-3">
-            <div class="flex-shrink-0 h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold uppercase text-sm">
+            <div
+              class="flex-shrink-0 h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold uppercase text-sm"
+            >
               {{ comment.author.username.charAt(0) }}
             </div>
             <div class="flex-1 bg-gray-50 rounded-lg px-4 py-3">
               <div class="flex items-baseline justify-between gap-2 mb-1">
-                <span class="font-semibold text-sm text-gray-900">{{ comment.author.username }}</span>
-                <span class="text-xs text-gray-400">{{ formatDateTime(comment.CreatedAt) }}</span>
+                <span class="font-semibold text-sm text-gray-900">{{
+                  comment.author.username
+                }}</span>
+                <span class="text-xs text-gray-400">{{
+                  formatDateTime(comment.CreatedAt)
+                }}</span>
               </div>
-              <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ comment.content }}</p>
+              <p class="text-sm text-gray-700 whitespace-pre-wrap">
+                {{ comment.content }}
+              </p>
             </div>
           </div>
         </div>
@@ -380,11 +394,13 @@
 
     <UModal v-model:open="isImagePreviewOpen">
       <template #content>
-        <UCard v-if="previewImageUrl" class="w-full max-w-3xl">
+        <UCard v-if="currentPreviewImage" class="w-full max-w-3xl">
           <template #header>
             <div class="flex items-center justify-between gap-3">
               <div>
-                <h3 class="text-lg font-semibold">{{ previewImageName }}</h3>
+                <h3 class="text-lg font-semibold">
+                  {{ currentPreviewImage.name }}
+                </h3>
                 <p class="text-sm text-gray-500">
                   Use o scroll do mouse para aproximar ou afastar a imagem e
                   arraste para navegar
@@ -413,13 +429,52 @@
             @mouseleave="stopPreviewDrag"
           >
             <img
-              :src="previewImageUrl"
-              :alt="previewImageName"
+              :src="currentPreviewImage.imageUrl"
+              :alt="currentPreviewImage.name"
               class="mx-auto h-auto rounded object-contain select-none"
               :style="previewImageStyle"
               draggable="false"
             />
           </div>
+
+          <template #footer>
+            <div class="border-t border-gray-200 pt-4">
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <div />
+                <div class="flex items-center justify-center gap-3">
+                  <UButton
+                    variant="soft"
+                    size="sm"
+                    icon="i-heroicons-chevron-left"
+                    :disabled="!canGoToPreviousPreviewImage"
+                    @click="showPreviousPreviewImage"
+                  />
+                  <span class="min-w-20 text-center text-sm text-gray-500">
+                    {{ previewPositionLabel }}
+                  </span>
+                  <UButton
+                    variant="soft"
+                    size="sm"
+                    icon="i-heroicons-chevron-right"
+                    :disabled="!canGoToNextPreviewImage"
+                    @click="showNextPreviewImage"
+                  />
+                </div>
+                <div class="flex justify-end">
+                  <UButton
+                    v-if="previewActionLabel"
+                    size="sm"
+                    :color="previewActionColor"
+                    :icon="previewActionIcon"
+                    :disabled="previewActionDisabled"
+                    @click="handlePreviewAction"
+                  >
+                    {{ previewActionLabel }}
+                  </UButton>
+                </div>
+              </div>
+            </div>
+          </template>
         </UCard>
       </template>
     </UModal>
@@ -469,6 +524,14 @@ interface CatalogComment {
   DeletedAt: string | null;
 }
 
+interface PreviewImageItem {
+  key: string;
+  name: string;
+  imageUrl: string;
+}
+
+type PreviewSource = "selected" | "search";
+
 definePageMeta({
   middleware: ["admin"],
   layout: "admin",
@@ -486,7 +549,9 @@ const commentsLoading = ref(false);
 const fetchComments = async (id: number) => {
   commentsLoading.value = true;
   try {
-    comments.value = await apiCall<CatalogComment[]>(`/api/catalogs/${id}/comments`);
+    comments.value = await apiCall<CatalogComment[]>(
+      `/api/catalogs/${id}/comments`,
+    );
   } catch (err) {
     console.error("Error fetching comments:", err);
   } finally {
@@ -602,8 +667,9 @@ const newProduct = reactive({ name: "", description: "", image_url: "" });
 const newProductPrice = ref(0);
 const newProductPriceDisplay = ref("0,00");
 const isImagePreviewOpen = ref(false);
-const previewImageName = ref("");
-const previewImageUrl = ref("");
+const previewImages = ref<PreviewImageItem[]>([]);
+const previewImageIndex = ref(0);
+const previewSource = ref<PreviewSource | null>(null);
 const previewContainer = ref<HTMLDivElement | null>(null);
 const previewZoom = ref(1);
 const isPreviewDragging = ref(false);
@@ -617,6 +683,10 @@ const PREVIEW_ZOOM_MIN = 1;
 const PREVIEW_ZOOM_MAX = 4;
 const PREVIEW_ZOOM_STEP = 0.25;
 
+const currentPreviewImage = computed(
+  () => previewImages.value[previewImageIndex.value] ?? null,
+);
+
 const previewImageStyle = computed(() => ({
   width: `${previewZoom.value * 100}%`,
   maxWidth: "none",
@@ -625,6 +695,62 @@ const previewImageStyle = computed(() => ({
 const previewZoomLabel = computed(
   () => `${Math.round(previewZoom.value * 100)}%`,
 );
+
+const previewPositionLabel = computed(() => {
+  if (previewImages.value.length === 0) return "";
+  return `${previewImageIndex.value + 1} de ${previewImages.value.length}`;
+});
+
+const canGoToPreviousPreviewImage = computed(() => previewImageIndex.value > 0);
+const canGoToNextPreviewImage = computed(
+  () => previewImageIndex.value < previewImages.value.length - 1,
+);
+const currentPreviewSelectedProduct = computed(() => {
+  if (previewSource.value !== "selected" || !currentPreviewImage.value) return null;
+  return (
+    selectedProducts.value.find(
+      (product) => product.id === currentPreviewImage.value?.key,
+    ) || null
+  );
+});
+const currentPreviewSearchProduct = computed(() => {
+  if (previewSource.value !== "search" || !currentPreviewImage.value) return null;
+  return (
+    searchResults.value.find(
+      (product) => String(product.id) === currentPreviewImage.value?.key,
+    ) || null
+  );
+});
+const currentPreviewSearchAlreadySelected = computed(() => {
+  if (!currentPreviewSearchProduct.value) return false;
+  return selectedProducts.value.some(
+    (product) => product.id === String(currentPreviewSearchProduct.value?.id),
+  );
+});
+const previewActionLabel = computed(() => {
+  if (previewSource.value === "selected") return "Remover peça";
+  if (previewSource.value === "search") {
+    return currentPreviewSearchAlreadySelected.value
+      ? "No catálogo"
+      : "Adicionar peça";
+  }
+  return "";
+});
+const previewActionColor = computed(() =>
+  previewSource.value === "selected" ? "error" : "success",
+);
+const previewActionIcon = computed(() =>
+  previewSource.value === "selected"
+    ? "i-heroicons-trash"
+    : "i-heroicons-plus",
+);
+const previewActionDisabled = computed(() => {
+  if (previewSource.value === "selected") return !currentPreviewSelectedProduct.value;
+  if (previewSource.value === "search") {
+    return !currentPreviewSearchProduct.value || currentPreviewSearchAlreadySelected.value;
+  }
+  return true;
+});
 
 const previewContainerCursor = computed(() => {
   if (previewZoom.value <= PREVIEW_ZOOM_MIN) return "cursor-zoom-in";
@@ -671,16 +797,78 @@ const stopPreviewDrag = () => {
   isPreviewDragging.value = false;
 };
 
-const openImagePreview = (name: string, imageUrl: string) => {
-  previewImageName.value = name;
-  previewImageUrl.value = imageUrl;
+const buildSelectedPreviewImages = (): PreviewImageItem[] =>
+  selectedProducts.value
+    .filter((product) => product.imageUrl)
+    .map((product) => ({
+      key: product.id,
+      name: product.name,
+      imageUrl: product.imageUrl,
+    }));
+
+const buildSearchPreviewImages = (): PreviewImageItem[] =>
+  searchResults.value
+    .filter((product) => product.image_url)
+    .map((product) => ({
+      key: String(product.id),
+      name: product.name,
+      imageUrl: product.image_url,
+    }));
+
+const openImagePreview = (
+  images: PreviewImageItem[],
+  imageKey: string,
+  source: PreviewSource,
+) => {
+  const imageIndex = images.findIndex((image) => image.key === imageKey);
+  if (imageIndex === -1) return;
+  previewImages.value = images;
+  previewImageIndex.value = imageIndex;
+  previewSource.value = source;
   resetImageZoom();
   isImagePreviewOpen.value = true;
+};
+
+const openSelectedImagePreview = (product: Product) => {
+  openImagePreview(buildSelectedPreviewImages(), product.id, "selected");
+};
+
+const openSearchImagePreview = (product: ProductSearchResult) => {
+  openImagePreview(buildSearchPreviewImages(), String(product.id), "search");
+};
+
+const showPreviousPreviewImage = () => {
+  if (!canGoToPreviousPreviewImage.value) return;
+  previewImageIndex.value -= 1;
+  resetImageZoom();
+};
+
+const showNextPreviewImage = () => {
+  if (!canGoToNextPreviewImage.value) return;
+  previewImageIndex.value += 1;
+  resetImageZoom();
+};
+
+const handlePreviewAction = () => {
+  if (previewSource.value === "selected" && currentPreviewSelectedProduct.value) {
+    isImagePreviewOpen.value = false;
+    openRemoveModal(currentPreviewSelectedProduct.value);
+    return;
+  }
+
+  if (previewSource.value === "search" && currentPreviewSearchProduct.value) {
+    if (currentPreviewSearchAlreadySelected.value) return;
+    isImagePreviewOpen.value = false;
+    openAddModal(currentPreviewSearchProduct.value);
+  }
 };
 
 watch(isImagePreviewOpen, (isOpen) => {
   if (!isOpen) {
     resetImageZoom();
+    previewImages.value = [];
+    previewImageIndex.value = 0;
+    previewSource.value = null;
   }
 });
 

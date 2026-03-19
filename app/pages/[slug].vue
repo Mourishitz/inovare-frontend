@@ -157,6 +157,23 @@
                 <p class="text-sm text-gray-600 line-clamp-2 min-h-[40px]">
                   {{ product.description }}
                 </p>
+
+                <div
+                  class="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between gap-3"
+                >
+                  <p class="text-lg font-bold text-pink-700">
+                    {{ formatPrice(product.price) }}
+                  </p>
+
+                  <UButton
+                    type="button"
+                    size="sm"
+                    color="primary"
+                    :disabled="!product.inStock"
+                  >
+                    Comprar
+                  </UButton>
+                </div>
               </div>
             </UCard>
           </div>
@@ -392,6 +409,12 @@ const { formatDateTime: formatCommentDate } = useDate();
 const availableCount = computed(
   () => catalog.value?.products.filter((p) => p.inStock).length || 0,
 );
+
+const formatPrice = (priceInCents: number) =>
+  new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(priceInCents / 100);
 
 const fetchComments = async (catalogId: string) => {
   commentsLoading.value = true;
