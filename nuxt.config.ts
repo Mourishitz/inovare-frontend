@@ -22,6 +22,9 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    abacatePayApiBase:
+      process.env.ABACATE_PAY_API_BASE || "https://api.abacatepay.com",
+    abacatePayToken: process.env.ABACATE_PAY_TOKEN || "",
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || "http://localhost:8080",
     },

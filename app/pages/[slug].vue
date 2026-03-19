@@ -145,7 +145,7 @@
                     :color="product.inStock ? 'green' : 'red'"
                     variant="solid"
                   >
-                    {{ product.inStock ? "Disponível" : "Esgotado" }}
+                    {{ product.inStock ? "Disponível" : "Adquirido" }}
                   </UBadge>
                 </div>
               </div>
@@ -161,8 +161,13 @@
                 <div
                   class="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between gap-3"
                 >
-                  <p class="text-lg font-bold text-pink-700">
-                    {{ formatPrice(product.price) }}
+                  <p
+                    class="text-lg font-bold"
+                    :class="
+                      product.inStock ? 'text-pink-700' : 'text-gray-500'
+                    "
+                  >
+                    {{ product.inStock ? formatPrice(product.price) : "Adquirido" }}
                   </p>
 
                   <UButton
@@ -170,6 +175,7 @@
                     size="sm"
                     color="primary"
                     :disabled="!product.inStock"
+                    @click="openPurchaseModal(product)"
                   >
                     Comprar
                   </UButton>
@@ -328,12 +334,98 @@
         </div>
       </div>
     </template>
+
+    <UModal v-model:open="purchaseModalOpen">
+      <template #content>
+        <UCard v-if="selectedPurchaseProduct" class="w-full max-w-lg">
+          <template #header>
+            <h3 class="text-lg font-semibold">Comprar via PIX</h3>
+          </template>
+
+          <div class="space-y-4">
+            <div class="rounded-lg border border-pink-100 bg-pink-50 p-4">
+              <p class="font-semibold text-gray-900">
+                {{ selectedPurchaseProduct.name }}
+              </p>
+              <p class="mt-1 text-sm text-gray-600">
+                {{ selectedPurchaseProduct.description }}
+              </p>
+              <p class="mt-3 text-lg font-bold text-pink-700">
+                {{ formatPrice(selectedPurchaseProduct.price) }}
+              </p>
+            </div>
+
+            <UFormField label="Nome" required>
+              <UInput
+                v-model="purchaseForm.name"
+                placeholder="Seu nome"
+                :disabled="purchaseLoading"
+              />
+            </UFormField>
+
+            <UFormField label="E-mail" required>
+              <UInput
+                v-model="purchaseForm.email"
+                type="email"
+                placeholder="voce@email.com"
+                :disabled="purchaseLoading"
+              />
+            </UFormField>
+
+            <UFormField label="Celular" required>
+              <UInput
+                v-model="purchaseForm.cellphone"
+                placeholder="(11) 99999-9999"
+                :disabled="purchaseLoading"
+              />
+            </UFormField>
+
+            <UFormField label="CPF ou CNPJ" required>
+              <UInput
+                v-model="purchaseForm.taxId"
+                placeholder="000.000.000-00"
+                :disabled="purchaseLoading"
+              />
+            </UFormField>
+
+            <UAlert
+              v-if="purchaseError"
+              color="error"
+              variant="soft"
+              :description="purchaseError"
+            />
+          </div>
+
+          <template #footer>
+            <div class="flex justify-end gap-2">
+              <UButton
+                type="button"
+                variant="ghost"
+                :disabled="purchaseLoading"
+                @click.prevent="closePurchaseModal"
+              >
+                Cancelar
+              </UButton>
+              <UButton
+                type="button"
+                color="primary"
+                :loading="purchaseLoading"
+                :disabled="!canSubmitPurchase"
+                @click.prevent="submitPurchase"
+              >
+                Continuar com PIX
+              </UButton>
+            </div>
+          </template>
+        </UCard>
+      </template>
+    </UModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { CatalogStatus } from "~/types";
-import type { Catalog } from "~/types";
+import type { Catalog, Product } from "~/types";
 
 interface CatalogComment {
   ID: number;
@@ -377,6 +469,10 @@ interface BackendCatalogResponse {
   }>;
 }
 
+interface PurchaseBillingResponse {
+  checkoutUrl: string;
+}
+
 definePageMeta({
   layout: "authenticated",
 });
@@ -403,11 +499,29 @@ const comments = ref<CatalogComment[]>([]);
 const commentsLoading = ref(false);
 const commentLoading = ref(false);
 const commentError = ref<string | null>(null);
+const purchaseModalOpen = ref(false);
+const purchaseLoading = ref(false);
+const purchaseError = ref<string | null>(null);
+const selectedPurchaseProduct = ref<Product | null>(null);
+const purchaseForm = reactive({
+  name: "",
+  email: "",
+  cellphone: "",
+  taxId: "",
+});
 
 const { formatDateTime: formatCommentDate } = useDate();
 
 const availableCount = computed(
   () => catalog.value?.products.filter((p) => p.inStock).length || 0,
+);
+const canSubmitPurchase = computed(
+  () =>
+    !!selectedPurchaseProduct.value &&
+    !!purchaseForm.name.trim() &&
+    !!purchaseForm.email.trim() &&
+    !!purchaseForm.cellphone.trim() &&
+    !!purchaseForm.taxId.trim(),
 );
 
 const formatPrice = (priceInCents: number) =>
@@ -415,6 +529,40 @@ const formatPrice = (priceInCents: number) =>
     style: "currency",
     currency: "BRL",
   }).format(priceInCents / 100);
+
+const loadCatalog = async () => {
+  const response = await apiCall<BackendCatalogResponse>(
+    `/api/catalogs/url/${slug.value}`,
+  );
+
+  const catalogId = response.catalog.ID.toString();
+
+  hostUsername.value = response.host?.username ?? null;
+
+  catalog.value = {
+    id: catalogId,
+    name: `Catálogo - ${response.catalog.package}`,
+    status: response.catalog.approved
+      ? CatalogStatus.APPROVED
+      : CatalogStatus.READY_FOR_REVIEW,
+    products: response.products.map((item) => ({
+      id: item.product.ID.toString(),
+      name: item.product.name,
+      description: item.product.description,
+      price: item.price,
+      imageUrl: item.product.image_url,
+      category: "",
+      inStock: !item.is_bought,
+    })),
+    approved: response.catalog.approved,
+    url: response.catalog.url,
+    package: response.catalog.package,
+    createdAt: response.catalog.CreatedAt,
+    updatedAt: response.catalog.UpdatedAt,
+  };
+
+  await fetchComments(catalogId);
+};
 
 const fetchComments = async (catalogId: string) => {
   commentsLoading.value = true;
@@ -470,39 +618,62 @@ const handleApprove = async () => {
   }
 };
 
-onMounted(async () => {
+const openPurchaseModal = (product: Product) => {
+  selectedPurchaseProduct.value = product;
+  purchaseError.value = null;
+  purchaseModalOpen.value = true;
+};
+
+const closePurchaseModal = () => {
+  if (purchaseLoading.value) return;
+  purchaseModalOpen.value = false;
+  purchaseError.value = null;
+};
+
+const submitPurchase = async () => {
+  if (!selectedPurchaseProduct.value || !import.meta.client) return;
+
+  purchaseLoading.value = true;
+  purchaseError.value = null;
+
   try {
-    const response = await apiCall<BackendCatalogResponse>(
-      `/api/catalogs/url/${slug.value}`,
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete("checkout");
+    currentUrl.searchParams.delete("productId");
+
+    const response = await $fetch<PurchaseBillingResponse>(
+      `/api/public-catalogs/${slug.value}/purchase`,
+      {
+        method: "POST",
+        body: {
+          productId: selectedPurchaseProduct.value.id,
+          customer: {
+            name: purchaseForm.name.trim(),
+            email: purchaseForm.email.trim(),
+            cellphone: purchaseForm.cellphone.trim(),
+            taxId: purchaseForm.taxId.trim(),
+          },
+          currentUrl: currentUrl.toString(),
+        },
+      },
     );
 
-    const catalogId = response.catalog.ID.toString();
+    purchaseModalOpen.value = false;
+    await navigateTo(response.checkoutUrl, { external: true });
+  } catch (err: any) {
+    purchaseError.value =
+      err?.data?.statusMessage ||
+      err?.statusMessage ||
+      err?.message ||
+      "Erro ao iniciar o pagamento via PIX.";
+  } finally {
+    purchaseLoading.value = false;
+  }
+};
 
-    hostUsername.value = response.host?.username ?? null;
-
-    catalog.value = {
-      id: catalogId,
-      name: `Catálogo - ${response.catalog.package}`,
-      status: response.catalog.approved
-        ? CatalogStatus.APPROVED
-        : CatalogStatus.READY_FOR_REVIEW,
-      products: response.products.map((item) => ({
-        id: item.product.ID.toString(),
-        name: item.product.name,
-        description: item.product.description,
-        price: item.price,
-        imageUrl: item.product.image_url,
-        category: "",
-        inStock: !item.is_bought,
-      })),
-      approved: response.catalog.approved,
-      url: response.catalog.url,
-      package: response.catalog.package,
-      createdAt: response.catalog.CreatedAt,
-      updatedAt: response.catalog.UpdatedAt,
-    };
-
-    await fetchComments(catalogId);
+onMounted(async () => {
+  try {
+    await loadCatalog();
   } catch (err) {
     const apiError = err as { data?: { error?: string } };
     error.value = apiError.data?.error || "Erro ao carregar catálogo";
