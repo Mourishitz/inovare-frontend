@@ -103,13 +103,13 @@
           >
             <div class="space-y-2">
               <button
-                v-if="product.image_url"
+                v-if="product.images?.length > 0"
                 type="button"
                 class="block w-full cursor-zoom-in"
                 @click="openSearchImagePreview(product)"
               >
                 <img
-                  :src="product.image_url"
+                  :src="product.images[0]"
                   :alt="product.name"
                   class="w-full h-32 object-contain rounded transition hover:scale-[1.02]"
                 />
@@ -220,8 +220,8 @@
 
           <div class="space-y-4">
             <img
-              v-if="modalProduct.image_url"
-              :src="modalProduct.image_url"
+              v-if="modalProduct.images?.length > 0"
+              :src="modalProduct.images[0]"
               :alt="modalProduct.name"
               class="w-full h-48 object-contain rounded"
             />
@@ -342,20 +342,12 @@
                   @change="handleProductImageUpload"
                 />
                 <img
-                  v-if="newProduct.image_url"
-                  :src="newProduct.image_url"
+                  v-if="newProduct.images.length > 0"
+                  :src="newProduct.images[0]"
                   alt="Preview"
                   class="w-full h-40 object-contain rounded"
                 />
               </div>
-            </UFormField>
-            <UFormField label="Preço (R$)" required>
-              <UInput
-                :model-value="newProductPriceDisplay"
-                inputmode="numeric"
-                placeholder="0,00"
-                @input="handleNewProductPriceInput"
-              />
             </UFormField>
           </div>
 
@@ -379,8 +371,7 @@
                   :loading="createProductLoading"
                   :disabled="
                     !newProduct.name ||
-                    !newProduct.description ||
-                    newProductPrice === 0
+                    !newProduct.description
                   "
                   @click="confirmCreateProduct"
                   >Cadastrar</UButton
@@ -488,13 +479,12 @@ interface ProductSearchResult {
   id: number;
   name: string;
   description: string;
-  image_url: string;
+  images: string[];
   is_exclusive: boolean;
 }
 
 interface CatalogProduct {
   ID: number;
-  price: number;
   is_bought: boolean;
   catalog_id: number;
   product_id: number;
@@ -502,7 +492,7 @@ interface CatalogProduct {
     ID: number;
     name: string;
     description: string;
-    image_url: string;
+    images: string[];
     is_exclusive: boolean;
   };
 }
@@ -597,7 +587,7 @@ const openAddModal = (product: ProductSearchResult) => {
 };
 
 const confirmAdd = async () => {
-  if (!modalProduct.value || modalPrice.value === 0 || !catalogId.value) return;
+  if (!modalProduct.value || !catalogId.value) return;
   modalLoading.value = true;
   modalError.value = null;
   try {
@@ -605,7 +595,7 @@ const confirmAdd = async () => {
       method: "POST",
       body: {
         product_id: modalProduct.value.id,
-        Price: modalPrice.value,
+        price: modalPrice.value,
       },
     });
     selectedProducts.value.push({
@@ -613,9 +603,8 @@ const confirmAdd = async () => {
       name: modalProduct.value.name,
       description: modalProduct.value.description,
       price: modalPrice.value,
-      imageUrl: modalProduct.value.image_url,
+      imageUrl: modalProduct.value.images?.[0] || "",
       category: "",
-      inStock: true,
     });
     isModalOpen.value = false;
   } catch (err: any) {
@@ -663,9 +652,7 @@ const confirmRemove = async () => {
 const isCreateProductModalOpen = ref(false);
 const createProductLoading = ref(false);
 const createProductError = ref<string | null>(null);
-const newProduct = reactive({ name: "", description: "", image_url: "" });
-const newProductPrice = ref(0);
-const newProductPriceDisplay = ref("0,00");
+const newProduct = reactive({ name: "", description: "", images: [] as string[] });
 const isImagePreviewOpen = ref(false);
 const previewImages = ref<PreviewImageItem[]>([]);
 const previewImageIndex = ref(0);
@@ -808,11 +795,11 @@ const buildSelectedPreviewImages = (): PreviewImageItem[] =>
 
 const buildSearchPreviewImages = (): PreviewImageItem[] =>
   searchResults.value
-    .filter((product) => product.image_url)
+    .filter((product) => product.images?.length > 0)
     .map((product) => ({
       key: String(product.id),
       name: product.name,
-      imageUrl: product.image_url,
+      imageUrl: product.images[0],
     }));
 
 const openImagePreview = (
@@ -875,9 +862,7 @@ watch(isImagePreviewOpen, (isOpen) => {
 const openCreateProductModal = () => {
   newProduct.name = "";
   newProduct.description = "";
-  newProduct.image_url = "";
-  newProductPrice.value = 0;
-  newProductPriceDisplay.value = "0,00";
+  newProduct.images = [];
   createProductError.value = null;
   isCreateProductModalOpen.value = true;
 };
@@ -887,16 +872,9 @@ const handleProductImageUpload = (e: Event) => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
-    newProduct.image_url = reader.result as string;
+    newProduct.images = [reader.result as string];
   };
   reader.readAsDataURL(file);
-};
-
-const handleNewProductPriceInput = (e: Event) => {
-  const digits = (e.target as HTMLInputElement).value.replace(/\D/g, "");
-  const cents = parseInt(digits || "0", 10);
-  newProductPrice.value = cents;
-  newProductPriceDisplay.value = (cents / 100).toFixed(2).replace(".", ",");
 };
 
 const confirmCreateProduct = async () => {
@@ -909,8 +887,7 @@ const confirmCreateProduct = async () => {
       body: {
         name: newProduct.name,
         description: newProduct.description,
-        image_url: newProduct.image_url,
-        Price: newProductPrice.value,
+        images: newProduct.images,
       },
     });
     const catalogProducts = await apiCall<CatalogProduct[]>(
@@ -921,7 +898,7 @@ const confirmCreateProduct = async () => {
       name: cp.product.name,
       description: cp.product.description,
       price: cp.price,
-      imageUrl: cp.product.image_url,
+      imageUrl: cp.product.images?.[0] || "",
       category: "",
       inStock: true,
     }));
@@ -1005,7 +982,7 @@ onMounted(async () => {
         name: cp.product.name,
         description: cp.product.description,
         price: cp.price,
-        imageUrl: cp.product.image_url,
+        imageUrl: cp.product.images?.[0] || "",
         category: "",
         inStock: true,
       }));

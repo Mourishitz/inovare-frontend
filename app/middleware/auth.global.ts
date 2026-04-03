@@ -1,8 +1,13 @@
-export default defineNuxtRouteMiddleware(async (to, from) => {
+export default defineNuxtRouteMiddleware(async (to, _from) => {
   // Only run on client-side
   if (import.meta.server) return
   
   const { isAuthenticated, checkAuth } = useAuth()
+  const isPublicRoute = to.path === '/login'
+    || to.path === '/signup'
+    || to.meta.public === true
+    || to.matched.some(record => record.meta.public === true)
+    || String(to.name) === 'slug'
   
   // Always check auth from storage
   await checkAuth()
@@ -16,8 +21,8 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     return navigateTo('/', { replace: true })
   }
   
-  // Skip check for login, signup, and public catalog URL pages
-  if (to.path === '/login' || to.path === '/signup' || to.name === 'slug') {
+  // Skip check for auth pages and routes explicitly exposed to the public
+  if (isPublicRoute) {
     return
   }
 

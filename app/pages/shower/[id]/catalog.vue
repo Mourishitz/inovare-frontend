@@ -143,7 +143,8 @@
             >
               <!-- Product Image -->
               <div
-                class="relative aspect-square bg-gradient-to-br from-pink-100 to-purple-100 rounded-lg overflow-hidden mb-4"
+                class="relative aspect-square bg-gradient-to-br from-pink-100 to-purple-100 rounded-lg overflow-hidden mb-4 cursor-pointer"
+                @click="openImageModal(product)"
               >
                 <img
                   v-if="product.imageUrl"
@@ -164,10 +165,10 @@
                 <!-- Stock Badge -->
                 <div class="absolute top-2 right-2">
                   <UBadge
-                    :color="product.inStock ? 'green' : 'red'"
+                    :color="!product.is_bought ? 'green' : 'red'"
                     variant="solid"
                   >
-                    {{ product.inStock ? "Disponível" : "Esgotado" }}
+                    {{ !product.is_bought ? "Disponível" : "Esgotado" }}
                   </UBadge>
                 </div>
               </div>
@@ -364,6 +365,73 @@
       </div>
     </template>
   </div>
+
+  <!-- Image Modal -->
+  <UModal v-model:open="imageModalOpen" :title="imageModalProductName">
+    <template #content>
+      <UCard v-if="!imageModalLoading && imageModalImages.length > 0" class="w-full max-w-3xl">
+        <template #header>
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-semibold">{{ imageModalProductName }}</h3>
+              <p class="text-sm text-gray-500">
+                Use o scroll do mouse para aproximar ou afastar a imagem e arraste para navegar
+              </p>
+            </div>
+            <UButton variant="soft" size="sm" icon="i-heroicons-arrow-path" @click="resetImageModalZoom">
+              {{ imageModalZoomLabel }}
+            </UButton>
+          </div>
+        </template>
+
+        <div
+          ref="imageModalContainer"
+          class="max-h-[70vh] overflow-auto rounded bg-gray-50 p-4"
+          @wheel.prevent="handleImageModalWheel"
+          @mousedown="startImageModalDrag"
+          @mousemove="handleImageModalDrag"
+          @mouseup="stopImageModalDrag"
+          @mouseleave="stopImageModalDrag"
+        >
+          <img
+            :src="imageModalImages[imageModalIndex]"
+            :alt="`Imagem ${imageModalIndex + 1}`"
+            class="mx-auto h-auto rounded object-contain select-none"
+            :style="imageModalImageStyle"
+            draggable="false"
+          />
+        </div>
+
+        <template #footer>
+          <div class="border-t border-gray-200 pt-4">
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <div />
+              <div class="flex items-center justify-center gap-3">
+                <UButton
+                  variant="soft"
+                  size="sm"
+                  icon="i-heroicons-chevron-left"
+                  :disabled="!canGoToPreviousImageModal"
+                  @click="showPreviousImageModal"
+                />
+                <span class="min-w-20 text-center text-sm text-gray-500">
+                  {{ imageModalPositionLabel }}
+                </span>
+                <UButton
+                  variant="soft"
+                  size="sm"
+                  icon="i-heroicons-chevron-right"
+                  :disabled="!canGoToNextImageModal"
+                  @click="showNextImageModal"
+                />
+              </div>
+              <div />
+            </div>
+          </div>
+        </template>
+      </UCard>
+    </template>
+  </UModal>
 </template>
 
 <script setup lang="ts">
@@ -427,27 +495,126 @@ interface BackendCatalogResponse {
   };
   products: Array<{
     ID: number;
-    price: number;
     is_bought: boolean;
     product: {
       ID: number;
       name: string;
       description: string;
-      image_url: string;
+      images: string[];
     };
   }>;
 }
 
 // Computed properties
 const availableCount = computed(
-  () => catalog.value?.products.filter((p) => p.inStock).length || 0,
+  () => catalog.value?.products.filter((p) => !p.is_bought).length || 0,
 );
 
-const totalValue = computed(
-  () => catalog.value?.products.reduce((sum, p) => sum + p.price, 0) || 0,
-);
+// Image Modal
+const imageModalOpen = ref(false);
+const imageModalProductId = ref<string | null>(null);
+const imageModalLoading = ref(false);
+const imageModalImages = ref<string[]>([]);
+const imageModalProductName = ref("");
+const imageModalIndex = ref(0);
+const imageModalZoom = ref(1);
+const imageModalContainer = ref<HTMLDivElement | null>(null);
+const isImageModalDragging = ref(false);
+const imageModalDragState = reactive({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
 
-// Comments state
+const PREVIEW_ZOOM_MIN = 1;
+const PREVIEW_ZOOM_MAX = 4;
+const PREVIEW_ZOOM_STEP = 0.25;
+
+const imageModalZoomLabel = computed(() => `${Math.round(imageModalZoom.value * 100)}%`);
+const imageModalPositionLabel = computed(() => `${imageModalIndex.value + 1} / ${imageModalImages.value.length}`);
+const canGoToPreviousImageModal = computed(() => imageModalIndex.value > 0);
+const canGoToNextImageModal = computed(() => imageModalIndex.value < imageModalImages.value.length - 1);
+
+const imageModalImageStyle = computed(() => ({
+  transform: `scale(${imageModalZoom.value})`,
+  cursor: isImageModalDragging.value ? 'grabbing' : 'grab',
+}));
+
+const openImageModal = async (product: Catalog['products'][0]) => {
+  imageModalProductName.value = product.name;
+  imageModalProductId.value = product.id;
+  imageModalImages.value = [];
+  imageModalIndex.value = 0;
+  imageModalZoom.value = 1;
+  imageModalOpen.value = true;
+  imageModalLoading.value = true;
+  
+  try {
+    const response = await apiCall<{ images: string[] }>(`/api/products/${product.id}/image`);
+    imageModalImages.value = response.images;
+  } catch (error) {
+    console.error("Error fetching product images:", error);
+  } finally {
+    imageModalLoading.value = false;
+  }
+};
+
+const showPreviousImageModal = () => {
+  if (canGoToPreviousImageModal.value) {
+    imageModalIndex.value--;
+    imageModalZoom.value = 1;
+    if (imageModalContainer.value) {
+      imageModalContainer.value.scrollLeft = 0;
+      imageModalContainer.value.scrollTop = 0;
+    }
+  }
+};
+
+const showNextImageModal = () => {
+  if (canGoToNextImageModal.value) {
+    imageModalIndex.value++;
+    imageModalZoom.value = 1;
+    if (imageModalContainer.value) {
+      imageModalContainer.value.scrollLeft = 0;
+      imageModalContainer.value.scrollTop = 0;
+    }
+  }
+};
+
+const resetImageModalZoom = () => {
+  imageModalZoom.value = 1;
+  if (imageModalContainer.value) {
+    imageModalContainer.value.scrollLeft = 0;
+    imageModalContainer.value.scrollTop = 0;
+  }
+};
+
+const handleImageModalWheel = (e: WheelEvent) => {
+  const delta = e.deltaY > 0 ? -PREVIEW_ZOOM_STEP : PREVIEW_ZOOM_STEP;
+  const newZoom = Math.max(PREVIEW_ZOOM_MIN, Math.min(PREVIEW_ZOOM_MAX, imageModalZoom.value + delta));
+  imageModalZoom.value = newZoom;
+};
+
+const startImageModalDrag = (e: MouseEvent) => {
+  if (!imageModalContainer.value) return;
+  isImageModalDragging.value = true;
+  imageModalDragState.startX = e.pageX - imageModalContainer.value.offsetLeft;
+  imageModalDragState.startY = e.pageY - imageModalContainer.value.offsetTop;
+  imageModalDragState.scrollLeft = imageModalContainer.value.scrollLeft;
+  imageModalDragState.scrollTop = imageModalContainer.value.scrollTop;
+};
+
+const handleImageModalDrag = (e: MouseEvent) => {
+  if (!isImageModalDragging.value || !imageModalContainer.value) return;
+  e.preventDefault();
+  const x = e.pageX - imageModalContainer.value.offsetLeft;
+  const y = e.pageY - imageModalContainer.value.offsetTop;
+  const walkX = (x - imageModalDragState.startX) * 1.5;
+  const walkY = (y - imageModalDragState.startY) * 1.5;
+  imageModalContainer.value.scrollLeft = imageModalDragState.scrollLeft - walkX;
+  imageModalContainer.value.scrollTop = imageModalDragState.scrollTop - walkY;
+};
+
+const stopImageModalDrag = () => {
+  isImageModalDragging.value = false;
+};
+
 const comments = ref<CatalogComment[]>([]);
 const commentsLoading = ref(false);
 const commentLoading = ref(false);
@@ -511,10 +678,9 @@ onMounted(async () => {
         id: item.product.ID.toString(),
         name: item.product.name,
         description: item.product.description,
-        price: item.price,
-        imageUrl: item.product.image_url,
+        imageUrl: item.product.imageUrl || "",
         category: "",
-        inStock: !item.is_bought,
+        is_bought: item.is_bought,
       })),
       createdAt: response.catalog.CreatedAt,
       updatedAt: response.catalog.UpdatedAt,

@@ -1,0 +1,139 @@
+I need you to implement a backend endpoint used by a Nuxt frontend running on static Firebase Hosting.
+
+Goal:
+Create `POST /api/public-catalogs/:slug/purchase`.
+
+Why:
+The frontend currently has a public catalog page identified by `slug`. When a user clicks `Continuar com PIX`, it sends a purchase request. This used to be implemented in a Nuxt server route, but in production the frontend is static, so this logic must live in the backend.
+
+Important context:
+- This is a PUBLIC route. No auth token is required from the buyer.
+- The buyer is purchasing a single product from a public catalog.
+- The backend already seems to expose `GET /api/catalogs/url/:slug` (or equivalent) returning the catalog and products for a public URL.
+- The new purchase route should validate input, find the catalog by slug, find the product, reject invalid/already-bought products, create a PIX checkout with Abacate Pay, and return the checkout URL.
+
+What Abacate Pay is:
+- Abacate Pay is the payment provider.
+- We need to create a PIX billing/checkout on the server.
+- This must use a server-side secret token, never exposed to the frontend.
+- Env vars expected:
+  - `ABACATE_PAY_TOKEN` (required)
+  - `ABACATE_PAY_API_BASE` (optional, default `https://api.abacatepay.com`)
+
+Expected request:
+`POST /api/public-catalogs/:slug/purchase`
+
+Path params:
+- `slug`: public catalog slug
+
+JSON body:
+```json
+{
+  "productId": "123",
+  "customer": {
+    "name": "Maria Silva",
+    "email": "maria@example.com",
+    "cellphone": "5511999999999",
+    "taxId": "12345678901"
+  },
+  "currentUrl": "https://frontend.example.com/jwmb25d29q2roacc"
+}
+```
+
+Field meanings:
+- `productId`: the selected product ID inside the public catalog
+- `customer.name`: buyer name
+- `customer.email`: buyer email
+- `customer.cellphone`: buyer phone
+- `customer.taxId`: CPF or CNPJ
+- `currentUrl`: URL of the public catalog page; use it as both return/completion URL for the checkout
+
+Required validations:
+1. `slug` must exist
+2. `productId` must exist
+3. `customer.name`, `customer.email`, `customer.cellphone`, `customer.taxId` must be non-empty
+4. `currentUrl` must be a valid absolute `http` or `https` URL
+5. If `ABACATE_PAY_TOKEN` is missing, return server error
+6. If the catalog/product is not found, return 404
+7. If the product is already bought/unavailable, return 409
+
+Business flow:
+1. Load the public catalog by `slug`
+2. Find the requested product inside that catalog
+3. Confirm it is still available
+4. Create a PIX billing on Abacate Pay
+5. Return the checkout URL to the frontend
+
+Catalog lookup behavior:
+- Reuse existing backend logic for public catalog lookup if available
+- The route needs enough product data to create the payment:
+  - catalog ID
+  - product ID
+  - product name
+  - product description
+  - product price (in cents)
+  - whether the product is already bought
+
+Abacate Pay request to create billing:
+`POST {ABACATE_PAY_API_BASE}/v1/billing/create`
+
+Headers:
+- `Authorization: Bearer {ABACATE_PAY_TOKEN}`
+- `Content-Type: application/json`
+- `Accept: application/json`
+
+Request body shape:
+```json
+{
+  "frequency": "ONE_TIME",
+  "methods": ["PIX"],
+  "products": [
+    {
+      "externalId": "catalog:{catalogId}:product:{productId}:checkout:{timestamp}",
+      "name": "Product name",
+      "description": "Product description",
+      "quantity": 1,
+      "price": 12345
+    }
+  ],
+  "returnUrl": "https://frontend.example.com/jwmb25d29q2roacc",
+  "completionUrl": "https://frontend.example.com/jwmb25d29q2roacc",
+  "customer": {
+    "name": "Maria Silva",
+    "email": "maria@example.com",
+    "cellphone": "5511999999999",
+    "taxId": "12345678901"
+  }
+}
+```
+
+Expected successful response to frontend:
+```json
+{
+  "checkoutUrl": "https://..."
+}
+```
+
+Expected error behavior:
+- 400 for invalid input
+- 404 if slug/product does not exist
+- 409 if product is already bought
+- 500 if payment config is missing
+- 502/appropriate upstream error if Abacate Pay fails
+
+Helpful mapping for upstream payment errors:
+- If Abacate returns `Invalid taxId`, translate to a user-friendly message like `CPF ou CNPJ inválido`
+
+Implementation notes:
+- Keep the Abacate token server-side only
+- Reuse existing catalog/product services and DTOs where possible
+- Keep the endpoint public but validate carefully
+- Return clean JSON errors/messages that the frontend can surface
+- Do not add frontend code; implement backend route only
+
+If possible, also include:
+- request/response DTOs
+- service method for creating the Abacate billing
+- controller/route wiring
+- env/config wiring
+- minimal tests for success, product-not-found, already-bought, and invalid input

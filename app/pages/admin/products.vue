@@ -33,21 +33,34 @@
             />
           </UFormField>
 
-          <UFormField label="Imagem" name="image" required>
+          <UFormField label="Imagens" name="images" required>
             <UFileUpload
-              v-model="selectedFile"
+              v-model="selectedFiles"
               accept="image/*"
               :disabled="creating"
+              multiple
             />
           </UFormField>
 
-          <div v-if="newProduct.image_url" class="mt-4">
+          <div v-if="newProduct.images.length > 0" class="mt-4">
             <p class="text-sm font-medium text-gray-700 mb-2">Preview:</p>
-            <img
-              :src="newProduct.image_url"
-              alt="Preview"
-              class="w-full h-64 object-contain rounded-lg"
-            />
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div v-for="(img, index) in newProduct.images" :key="index" class="relative">
+                <img
+                  :src="img"
+                  :alt="`Preview ${index + 1}`"
+                  class="w-full h-32 object-contain rounded-lg"
+                />
+                <UButton
+                  color="error"
+                  variant="solid"
+                  size="xs"
+                  class="absolute top-1 right-1"
+                  icon="i-heroicons-x-mark"
+                  @click="removeNewProductImage(index)"
+                />
+              </div>
+            </div>
           </div>
 
           <div class="pt-4">
@@ -127,28 +140,12 @@
                   </td>
                   <td class="py-3 px-4 text-right">
                     <div class="flex items-center justify-end gap-2">
-                      <UModal
-                        :title="product.name"
-                        :close="{
-                          color: 'primary',
-                          variant: 'outline',
-                          class: 'rounded-full',
-                        }"
-                      >
-                        <UButton
-                          label="Visualizar Imagem"
-                          color="neutral"
-                          variant="subtle"
-                        />
-
-                        <template #body>
-                          <img
-                            :src="productImages[product.id]"
-                            alt="Imagem do produto"
-                            class="w-full h-auto rounded-md mb-4"
-                          />
-                        </template>
-                      </UModal>
+                      <UButton
+                        label="Visualizar Imagem"
+                        color="neutral"
+                        variant="subtle"
+                        @click="openImageModal(product)"
+                      />
 
                       <UButton
                         label="Editar"
@@ -243,20 +240,44 @@
 
         <UFormField label="Nova Imagem (opcional)" name="image">
           <UFileUpload
-            v-model="editSelectedFile"
+            v-model="editSelectedFiles"
             accept="image/*"
             :disabled="editing"
+            multiple
           />
         </UFormField>
 
-        <div v-if="editPreviewUrl" class="mt-4">
+        <div v-if="editProduct.images.length > 0" class="mt-4">
           <p class="text-sm font-medium text-gray-700 mb-2">Preview:</p>
-          <img
-            :src="editPreviewUrl"
-            alt="Preview"
-            class="w-full h-64 object-contain rounded-lg"
-          />
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div v-for="(img, index) in editProduct.images" :key="index" class="relative">
+              <img
+                :src="img"
+                :alt="`Preview ${index + 1}`"
+                class="w-full h-32 object-contain rounded-lg"
+              />
+              <UButton
+                color="error"
+                variant="solid"
+                size="xs"
+                class="absolute top-1 right-1"
+                icon="i-heroicons-x-mark"
+                @click="removeEditProductImage(index)"
+              />
+            </div>
+          </div>
         </div>
+
+        <UButton
+          v-if="editSelectedFiles.length > 0"
+          color="secondary"
+          variant="outline"
+          size="sm"
+          class="mt-2"
+          @click="addEditProductImages"
+        >
+          Adicionar imagens selecionadas
+        </UButton>
 
         <div class="flex justify-end gap-3 pt-2">
           <UButton
@@ -273,7 +294,74 @@
             :loading="editing"
           />
         </div>
-      </UForm>
+        </UForm>
+      </template>
+    </UModal>
+
+  <!-- Image Modal -->
+  <UModal v-model:open="imageModalOpen" :title="imageModalProductName">
+    <template #content>
+      <UCard v-if="!imageModalLoading && imageModalImages.length > 0" class="w-full max-w-3xl">
+        <template #header>
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-semibold">{{ imageModalProductName }}</h3>
+              <p class="text-sm text-gray-500">
+                Use o scroll do mouse para aproximar ou afastar a imagem e arraste para navegar
+              </p>
+            </div>
+            <UButton variant="soft" size="sm" icon="i-heroicons-arrow-path" @click="resetImageModalZoom">
+              {{ imageModalZoomLabel }}
+            </UButton>
+          </div>
+        </template>
+
+        <div
+          ref="imageModalContainer"
+          class="max-h-[70vh] overflow-auto rounded bg-gray-50 p-4"
+          @wheel.prevent="handleImageModalWheel"
+          @mousedown="startImageModalDrag"
+          @mousemove="handleImageModalDrag"
+          @mouseup="stopImageModalDrag"
+          @mouseleave="stopImageModalDrag"
+        >
+          <img
+            :src="imageModalImages[imageModalIndex]"
+            :alt="`Imagem ${imageModalIndex + 1}`"
+            class="mx-auto h-auto rounded object-contain select-none"
+            :style="imageModalImageStyle"
+            draggable="false"
+          />
+        </div>
+
+        <template #footer>
+          <div class="border-t border-gray-200 pt-4">
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <div />
+              <div class="flex items-center justify-center gap-3">
+                <UButton
+                  variant="soft"
+                  size="sm"
+                  icon="i-heroicons-chevron-left"
+                  :disabled="!canGoToPreviousImageModal"
+                  @click="showPreviousImageModal"
+                />
+                <span class="min-w-20 text-center text-sm text-gray-500">
+                  {{ imageModalPositionLabel }}
+                </span>
+                <UButton
+                  variant="soft"
+                  size="sm"
+                  icon="i-heroicons-chevron-right"
+                  :disabled="!canGoToNextImageModal"
+                  @click="showNextImageModal"
+                />
+              </div>
+              <div />
+            </div>
+          </div>
+        </template>
+      </UCard>
     </template>
   </UModal>
 
@@ -317,8 +405,8 @@ interface Product {
   id: number;
   name: string;
   description: string;
+  images: string[];
   is_exclusive: boolean;
-  shower_id?: number;
 }
 
 interface ProductsResponse {
@@ -332,7 +420,6 @@ interface ProductsResponse {
 }
 
 const products = ref<Product[]>([]);
-const productImages = ref<Record<number, string>>({});
 const pagination = ref({
   page: 1,
   page_size: 10,
@@ -344,66 +431,189 @@ const creating = ref(false);
 const deleting = ref(false);
 const deleteModalOpen = ref(false);
 const productToDelete = ref<Product | null>(null);
-const selectedFile = ref<File | null>(null);
+const selectedFiles = ref<File[]>([]);
+
+const imageModalOpen = ref(false);
+const imageModalProductId = ref<number | null>(null);
+const imageModalLoading = ref(false);
+const imageModalImages = ref<string[]>([]);
+const imageModalProductName = ref("");
+const imageModalIndex = ref(0);
+const imageModalZoom = ref(1);
+const imageModalContainer = ref<HTMLDivElement | null>(null);
+const isImageModalDragging = ref(false);
+const imageModalDragState = reactive({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
+
+const PREVIEW_ZOOM_MIN = 1;
+const PREVIEW_ZOOM_MAX = 4;
+const PREVIEW_ZOOM_STEP = 0.25;
+
+const imageModalZoomLabel = computed(() => `${Math.round(imageModalZoom.value * 100)}%`);
+const imageModalPositionLabel = computed(() => `${imageModalIndex.value + 1} / ${imageModalImages.value.length}`);
+const canGoToPreviousImageModal = computed(() => imageModalIndex.value > 0);
+const canGoToNextImageModal = computed(() => imageModalIndex.value < imageModalImages.value.length - 1);
+
+const imageModalImageStyle = computed(() => ({
+  transform: `scale(${imageModalZoom.value})`,
+  cursor: isImageModalDragging.value ? 'grabbing' : 'grab',
+}));
+
+const openImageModal = async (product: Product) => {
+  imageModalProductName.value = product.name;
+  imageModalProductId.value = product.id;
+  imageModalImages.value = [];
+  imageModalIndex.value = 0;
+  imageModalZoom.value = 1;
+  imageModalOpen.value = true;
+  imageModalLoading.value = true;
+  
+  try {
+    const response = await apiCall<{ images: string[] }>(`/api/products/${product.id}`);
+    imageModalImages.value = response.images;
+  } catch (error) {
+    console.error("Error fetching product images:", error);
+  } finally {
+    imageModalLoading.value = false;
+  }
+};
+
+const showPreviousImageModal = () => {
+  if (canGoToPreviousImageModal.value) {
+    imageModalIndex.value--;
+    imageModalZoom.value = 1;
+    if (imageModalContainer.value) {
+      imageModalContainer.value.scrollLeft = 0;
+      imageModalContainer.value.scrollTop = 0;
+    }
+  }
+};
+
+const showNextImageModal = () => {
+  if (canGoToNextImageModal.value) {
+    imageModalIndex.value++;
+    imageModalZoom.value = 1;
+    if (imageModalContainer.value) {
+      imageModalContainer.value.scrollLeft = 0;
+      imageModalContainer.value.scrollTop = 0;
+    }
+  }
+};
+
+const resetImageModalZoom = () => {
+  imageModalZoom.value = 1;
+  if (imageModalContainer.value) {
+    imageModalContainer.value.scrollLeft = 0;
+    imageModalContainer.value.scrollTop = 0;
+  }
+};
+
+const handleImageModalWheel = (e: WheelEvent) => {
+  const delta = e.deltaY > 0 ? -PREVIEW_ZOOM_STEP : PREVIEW_ZOOM_STEP;
+  const newZoom = Math.max(PREVIEW_ZOOM_MIN, Math.min(PREVIEW_ZOOM_MAX, imageModalZoom.value + delta));
+  imageModalZoom.value = newZoom;
+};
+
+const startImageModalDrag = (e: MouseEvent) => {
+  if (!imageModalContainer.value) return;
+  isImageModalDragging.value = true;
+  imageModalDragState.startX = e.pageX - imageModalContainer.value.offsetLeft;
+  imageModalDragState.startY = e.pageY - imageModalContainer.value.offsetTop;
+  imageModalDragState.scrollLeft = imageModalContainer.value.scrollLeft;
+  imageModalDragState.scrollTop = imageModalContainer.value.scrollTop;
+};
+
+const handleImageModalDrag = (e: MouseEvent) => {
+  if (!isImageModalDragging.value || !imageModalContainer.value) return;
+  e.preventDefault();
+  const x = e.pageX - imageModalContainer.value.offsetLeft;
+  const y = e.pageY - imageModalContainer.value.offsetTop;
+  const walkX = (x - imageModalDragState.startX) * 1.5;
+  const walkY = (y - imageModalDragState.startY) * 1.5;
+  imageModalContainer.value.scrollLeft = imageModalDragState.scrollLeft - walkX;
+  imageModalContainer.value.scrollTop = imageModalDragState.scrollTop - walkY;
+};
+
+const stopImageModalDrag = () => {
+  isImageModalDragging.value = false;
+};
 
 const editing = ref(false);
 const editModalOpen = ref(false);
 const editLoadingCatalog = ref(false);
-const editSelectedFile = ref<File | null>(null);
+const editSelectedFiles = ref<File[]>([]);
 const editProduct = reactive({
   id: 0,
   name: "",
   description: "",
-  image_url: "",
+  images: [] as string[],
   is_exclusive: false,
   catalog_id: null as number | null,
   shower_id: null as number | null,
 });
 
-const editPreviewUrl = computed(
-  () =>
-    editProduct.image_url ||
-    (editProduct.id ? productImages.value[editProduct.id] : ""),
-);
-
 const newProduct = reactive({
   name: "",
   description: "",
-  image_url: "",
+  images: [] as string[],
 });
 
 const resetForm = () => {
   newProduct.name = "";
   newProduct.description = "";
-  newProduct.image_url = "";
-  selectedFile.value = null;
+  newProduct.images = [];
+  selectedFiles.value = [];
 };
 
-// Watch for file changes and convert to base64
-watch(selectedFile, (file) => {
-  if (!file) {
-    newProduct.image_url = "";
+watch(selectedFiles, (files) => {
+  if (!files || files.length === 0) {
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    newProduct.image_url = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
+  files.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result && !newProduct.images.includes(e.target.result as string)) {
+        newProduct.images.push(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 });
 
-watch(editSelectedFile, (file) => {
-  if (!file) {
-    editProduct.image_url = "";
+const removeNewProductImage = (index: number) => {
+  newProduct.images.splice(index, 1);
+};
+
+const addEditProductImages = () => {
+  editSelectedFiles.value.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result && !editProduct.images.includes(e.target.result as string)) {
+        editProduct.images.push(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
+const removeEditProductImage = (index: number) => {
+  editProduct.images.splice(index, 1);
+};
+
+watch(editSelectedFiles, (files) => {
+  if (!files || files.length === 0) {
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    editProduct.image_url = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
+  files.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result && !editProduct.images.includes(e.target.result as string)) {
+        editProduct.images.push(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 });
 
 const fetchProducts = async (page: number = 1) => {
@@ -414,18 +624,6 @@ const fetchProducts = async (page: number = 1) => {
     );
     products.value = response.data;
     pagination.value = response.pagination;
-
-    // Fetch images in parallel
-    const imageResults = await Promise.allSettled(
-      response.data.map((p) =>
-        apiCall<{ image_url: string }>(`/api/products/${p.id}/image`),
-      ),
-    );
-    imageResults.forEach((result, i) => {
-      if (result.status === "fulfilled") {
-        productImages.value[response.data[i].id] = result.value.image_url;
-      }
-    });
   } catch (error) {
     console.error("Error fetching products:", error);
     useToast().add({
@@ -452,7 +650,7 @@ const handleCreateProduct = async () => {
       body: {
         name: newProduct.name,
         description: newProduct.description,
-        image_url: newProduct.image_url,
+        images: newProduct.images,
       },
     });
 
@@ -487,10 +685,10 @@ const openEditModal = async (product: Product) => {
   editProduct.name = product.name;
   editProduct.description = product.description;
   editProduct.is_exclusive = product.is_exclusive;
-  editProduct.image_url = "";
+  editProduct.images = product.images || [];
   editProduct.catalog_id = null;
   editProduct.shower_id = null;
-  editSelectedFile.value = null;
+  editSelectedFiles.value = [];
   editModalOpen.value = true;
 
   if (product.is_exclusive) {
@@ -526,10 +724,8 @@ const handleEditProduct = async () => {
     const body: Record<string, unknown> = {
       name: editProduct.name,
       description: editProduct.description,
+      images: editProduct.images,
     };
-    if (editProduct.image_url) {
-      body.image_url = editProduct.image_url;
-    }
 
     await apiCall(`/api/products/${editProduct.id}`, {
       method: "PATCH",

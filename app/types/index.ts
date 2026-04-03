@@ -103,12 +103,13 @@ export enum CatalogStatus {
 
 export interface Product {
   id: string
-  name: string  // e.g., "Conjunto de Renda", "Baby Doll"
+  name: string
   description: string
-  price: number
-  imageUrl: string
-  category: string  // e.g., "Conjunto", "Baby Doll", "Camisola", "Robe"
-  inStock: boolean
+  images: string[]
+  imageUrl?: string
+  is_exclusive: boolean
+  is_bought?: boolean
+  price?: number
 }
 
 export interface Review {
